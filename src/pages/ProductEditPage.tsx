@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-r
 import { fetchCategories } from '../api/categories'
 import { createProduct, fetchProductBySlug, updateProduct } from '../api/products'
 import { MediaImageList } from '../components/media/MediaImageList'
-import { IconPlus } from '../components/icons'
+import { VariantsPanel } from '../components/products/VariantsPanel'
 import {
   emptyProduct,
   getProductColorCount,
@@ -11,16 +11,13 @@ import {
   getProductTotalStock,
   stockToneClass,
   type Category,
-  type ColorGallery,
   type Product,
-  type ProductVariant,
 } from '../data/store'
 import { ApiError } from '../lib/api'
 import { slugify } from '../lib/slug'
 
 const tabs = [
   { id: 'details', label: 'Details' },
-  { id: 'media', label: 'Media' },
   { id: 'variants', label: 'Variants' },
   { id: 'visibility', label: 'Visibility' },
 ] as const
@@ -124,105 +121,109 @@ function ProductEditor({ mode, initial, categories }: ProductEditorProps) {
   }
 
   return (
-    <div className="animate-fade-up px-6 py-6 lg:px-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <Link
-            to="/products"
-            className="text-[0.85rem] font-medium text-muted transition hover:text-burgundy"
+    <div className="animate-fade-up">
+      <div className="sticky top-[3.35rem] z-20 border-b border-border/60 bg-admin-bg/95 px-6 py-4 backdrop-blur-sm lg:top-0 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <Link
+              to="/products"
+              className="text-[0.85rem] font-medium text-muted transition hover:text-burgundy"
+            >
+              ← Products
+            </Link>
+            <h1 className="mt-1 font-display text-[1.85rem] font-semibold text-admin-ink">
+              {mode === 'create' ? 'Add product' : 'Edit Product'}
+            </h1>
+            <p className="mt-0.5 text-[0.88rem] text-muted">
+              {draft.name || 'Untitled product'}
+              {draft.id ? ` • ${draft.id}` : ''}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="shrink-0 rounded-lg bg-burgundy px-4 py-2.5 text-[0.88rem] font-semibold text-white transition hover:bg-burgundy-dark disabled:opacity-60"
           >
-            ← Products
-          </Link>
-          <h1 className="mt-2 font-display text-[1.85rem] font-semibold text-admin-ink">
-            {mode === 'create' ? 'Add product' : 'Edit Product'}
-          </h1>
-          <p className="mt-1 text-[0.88rem] text-muted">
-            {draft.name || 'Untitled product'}
-            {draft.id ? ` • ${draft.id}` : ''}
-          </p>
+            {saving ? 'Saving…' : 'Save Product'}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={saving}
-          className="rounded-lg bg-burgundy px-4 py-2.5 text-[0.88rem] font-semibold text-white transition hover:bg-burgundy-dark disabled:opacity-60"
-        >
-          {saving
-            ? 'Saving…'
-            : mode === 'create'
-              ? 'Create product'
-              : 'Save changes'}
-        </button>
       </div>
 
-      {error ? (
-        <p className="mb-4 text-[0.85rem] text-burgundy-soft" role="alert">
-          {error}
-        </p>
-      ) : null}
+      <div className="px-6 py-6 lg:px-8">
+        {error ? (
+          <p className="mb-4 text-[0.85rem] text-burgundy-soft" role="alert">
+            {error}
+          </p>
+        ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
-        <div className="grid lg:grid-cols-[220px_1fr]">
-          <aside className="border-b border-border/60 p-5 lg:border-r lg:border-b-0">
-            <p className="text-[0.68rem] font-medium tracking-[0.12em] text-muted-light uppercase">
-              Product
-            </p>
-            <nav className="mt-3 flex flex-col gap-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setTab(tab.id)}
-                  className={[
-                    'rounded-lg px-3 py-2 text-left text-[0.9rem] transition',
-                    activeTab === tab.id
-                      ? 'bg-accent-pink font-medium text-burgundy'
-                      : 'text-admin-ink hover:bg-admin-bg',
-                  ].join(' ')}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-
-            <div className="mt-8">
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+          <div className="grid lg:grid-cols-[220px_1fr]">
+            <aside className="border-b border-border/60 p-5 lg:border-r lg:border-b-0">
               <p className="text-[0.68rem] font-medium tracking-[0.12em] text-muted-light uppercase">
-                Variant summary
+                Product
               </p>
-              <p className="mt-2 text-[0.95rem] font-semibold text-admin-ink">
-                {draft.variants.length} variants
-              </p>
-              <p className="text-[0.8rem] text-muted">
-                {colorCount} colours • {sizeCount} sizes
-              </p>
-              <p className={`mt-1 text-[0.8rem] font-medium ${stockToneClass(totalStock)}`}>
-                {totalStock} total stock
-              </p>
-            </div>
-          </aside>
+              <nav className="mt-3 flex flex-col gap-1">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setTab(tab.id)}
+                    className={[
+                      'rounded-lg px-3 py-2 text-left text-[0.9rem] transition',
+                      activeTab === tab.id
+                        ? 'bg-accent-pink font-medium text-burgundy'
+                        : 'text-admin-ink hover:bg-admin-bg',
+                    ].join(' ')}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
 
-          <div className="p-5 sm:p-6">
-            {activeTab === 'details' ? (
-              <DetailsPanel
-                draft={draft}
-                categories={categories}
-                onNameChange={handleNameChange}
-                onSlugChange={(slug) => {
-                  setSlugTouched(true)
-                  update('slug', slugify(slug))
-                }}
-                onChange={update}
-              />
-            ) : null}
-            {activeTab === 'media' ? (
-              <MediaPanel draft={draft} onChange={update} />
-            ) : null}
-            {activeTab === 'variants' ? (
-              <VariantsPanel draft={draft} onChange={update} />
-            ) : null}
-            {activeTab === 'visibility' ? (
-              <VisibilityPanel draft={draft} onChange={update} />
-            ) : null}
+              <div className="mt-8">
+                <p className="text-[0.68rem] font-medium tracking-[0.12em] text-muted-light uppercase">
+                  Variants summary
+                </p>
+                <p className="mt-2 text-[0.95rem] font-semibold text-admin-ink">
+                  {colorCount} color{colorCount === 1 ? '' : 's'}
+                </p>
+                <p className="text-[0.8rem] text-muted">
+                  {sizeCount} size{sizeCount === 1 ? '' : 's'}
+                </p>
+                <p className={`mt-1 text-[0.8rem] font-medium ${stockToneClass(totalStock)}`}>
+                  {totalStock} total stock
+                </p>
+              </div>
+
+              <div className="mt-6 rounded-xl bg-accent-pink/50 px-3.5 py-3">
+                <p className="text-[0.78rem] leading-relaxed text-burgundy">
+                  Add colors with images and manage sizes, pricing and stock for each
+                  color.
+                </p>
+              </div>
+            </aside>
+
+            <div className="p-5 sm:p-6">
+              {activeTab === 'details' ? (
+                <DetailsPanel
+                  draft={draft}
+                  categories={categories}
+                  onNameChange={handleNameChange}
+                  // onSlugChange={(slug) => {
+                  //   setSlugTouched(true)
+                  //   update('slug', slugify(slug))
+                  // }}
+                  onChange={update}
+                />
+              ) : null}
+              {activeTab === 'variants' ? (
+                <VariantsPanel draft={draft} onChange={update} />
+              ) : null}
+              {activeTab === 'visibility' ? (
+                <VisibilityPanel draft={draft} onChange={update} />
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -234,13 +235,13 @@ function DetailsPanel({
   draft,
   categories,
   onNameChange,
-  onSlugChange,
+  // onSlugChange,
   onChange,
 }: {
   draft: Product
   categories: Category[]
   onNameChange: (name: string) => void
-  onSlugChange: (slug: string) => void
+  // onSlugChange: (slug: string) => void
   onChange: <K extends keyof Product>(key: K, value: Product[K]) => void
 }) {
   return (
@@ -258,7 +259,7 @@ function DetailsPanel({
       </label>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5">
+        {/* <label className="flex flex-col gap-1.5">
           <span className={labelClass}>Slug</span>
           <input
             className={fieldClass}
@@ -266,7 +267,7 @@ function DetailsPanel({
             onChange={(e) => onSlugChange(e.target.value)}
             placeholder="rose-kanjeevaram-pattu-pavadai"
           />
-        </label>
+        </label> */}
         <label className="flex flex-col gap-1.5">
           <span className={labelClass}>Category</span>
           <select
@@ -294,8 +295,23 @@ function DetailsPanel({
         />
       </label>
 
+      <div>
+        <div className="mb-2">
+          <span className={labelClass}>Product images</span>
+          <p className="mt-0.5 text-[0.78rem] text-muted">
+            Shared gallery used as product defaults — pick from the media library
+          </p>
+        </div>
+        <MediaImageList
+          urls={draft.images}
+          onChange={(images) => onChange('images', images)}
+          emptyLabel="Opens the media library so you can pick product images"
+          addLabel="Add image"
+        />
+      </div>
+
       <label className="flex flex-col gap-1.5">
-        <span className={labelClass}>Fabric</span>
+        <span className={labelClass}>Fabric (optional)</span>
         <input
           className={fieldClass}
           value={draft.fabric}
@@ -306,7 +322,7 @@ function DetailsPanel({
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <span className={labelClass}>Care instructions</span>
+          <span className={labelClass}>Care instructions (optional)</span>
           <button
             type="button"
             onClick={() => onChange('care', [...draft.care, ''])}
@@ -341,307 +357,6 @@ function DetailsPanel({
             <p className="text-[0.8rem] text-muted">No care lines yet.</p>
           ) : null}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function MediaPanel({
-  draft,
-  onChange,
-}: {
-  draft: Product
-  onChange: <K extends keyof Product>(key: K, value: Product[K]) => void
-}) {
-  const [selectedColor, setSelectedColor] = useState(
-    draft.colorGalleries[0]?.color ?? '',
-  )
-  const gallery =
-    draft.colorGalleries.find((g) => g.color === selectedColor) ?? draft.colorGalleries[0]
-
-  function setImages(images: string[]) {
-    onChange('images', images)
-  }
-
-  function setColorGalleries(galleries: ColorGallery[]) {
-    onChange('colorGalleries', galleries)
-    if (!galleries.some((g) => g.color === selectedColor)) {
-      setSelectedColor(galleries[0]?.color ?? '')
-    }
-  }
-
-  function updateGalleryImages(color: string, images: string[]) {
-    setColorGalleries(
-      draft.colorGalleries.map((g) => (g.color === color ? { ...g, images } : g)),
-    )
-  }
-
-  function addColorGallery() {
-    const color = `Color ${draft.colorGalleries.length + 1}`
-    setColorGalleries([...draft.colorGalleries, { color, images: [] }])
-    setSelectedColor(color)
-  }
-
-  return (
-    <div className="space-y-8">
-      <section>
-        <div className="mb-4">
-          <h2 className="text-[1.05rem] font-semibold text-admin-ink">Product images</h2>
-          <p className="mt-0.5 text-[0.82rem] text-muted">
-            Shared gallery used as product defaults — pick from the media library
-          </p>
-        </div>
-
-        <MediaImageList
-          urls={draft.images}
-          onChange={setImages}
-          emptyLabel="Opens the media library so you can pick product images"
-          addLabel="Add image"
-        />
-      </section>
-
-      <section>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-[1.05rem] font-semibold text-admin-ink">Color galleries</h2>
-            <p className="mt-0.5 text-[0.82rem] text-muted">
-              Images grouped by color (matches API colorGalleries)
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={addColorGallery}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent-pink px-3 py-2 text-[0.82rem] font-medium text-burgundy transition hover:bg-accent-pink-deep"
-          >
-            <IconPlus className="h-3.5 w-3.5" />
-            Add color
-          </button>
-        </div>
-
-        {draft.colorGalleries.length === 0 ? (
-          <p className="mt-4 text-[0.8rem] text-muted">No color galleries yet.</p>
-        ) : (
-          <>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {draft.colorGalleries.map((g) => (
-                <button
-                  key={g.color}
-                  type="button"
-                  onClick={() => setSelectedColor(g.color)}
-                  className={[
-                    'rounded-lg px-3 py-1.5 text-[0.82rem] font-medium transition',
-                    g.color === (gallery?.color ?? selectedColor)
-                      ? 'bg-accent-pink text-burgundy'
-                      : 'bg-admin-bg text-muted hover:text-admin-ink',
-                  ].join(' ')}
-                >
-                  {g.color} ({g.images.length})
-                </button>
-              ))}
-            </div>
-
-            {gallery ? (
-              <div className="mt-4 space-y-4 rounded-xl border border-border/70 p-4">
-                <label className="flex flex-col gap-1.5">
-                  <span className={labelClass}>Color name</span>
-                  <input
-                    className={fieldClass}
-                    value={gallery.color}
-                    onChange={(e) => {
-                      const nextName = e.target.value
-                      setColorGalleries(
-                        draft.colorGalleries.map((g) =>
-                          g.color === gallery.color ? { ...g, color: nextName } : g,
-                        ),
-                      )
-                      setSelectedColor(nextName)
-                    }}
-                  />
-                </label>
-
-                <MediaImageList
-                  urls={gallery.images}
-                  onChange={(images) => updateGalleryImages(gallery.color, images)}
-                  emptyLabel="Pick images for this color from the media library"
-                  addLabel="Add image"
-                />
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setColorGalleries(
-                      draft.colorGalleries.filter((g) => g.color !== gallery.color),
-                    )
-                  }
-                  className="rounded-lg px-3 py-2 text-[0.82rem] font-medium text-muted transition hover:text-burgundy"
-                >
-                  Remove color
-                </button>
-              </div>
-            ) : null}
-          </>
-        )}
-      </section>
-    </div>
-  )
-}
-
-function VariantsPanel({
-  draft,
-  onChange,
-}: {
-  draft: Product
-  onChange: <K extends keyof Product>(key: K, value: Product[K]) => void
-}) {
-  function updateVariant(index: number, patch: Partial<ProductVariant>) {
-    const next = draft.variants.map((v, i) => (i === index ? { ...v, ...patch } : v))
-    onChange('variants', next)
-  }
-
-  function updatePrice(
-    index: number,
-    key: 'selling' | 'original',
-    value: string,
-  ) {
-    const num = Number(value)
-    const variant = draft.variants[index]
-    if (!variant) return
-    updateVariant(index, {
-      price: {
-        ...variant.price,
-        [key]: Number.isFinite(num) ? num : 0,
-      },
-    })
-  }
-
-  function addVariant() {
-    const id = `${draft.id || 'bp-new'}-NEW-${draft.variants.length + 1}`
-    onChange('variants', [
-      ...draft.variants,
-      {
-        id,
-        sku: id,
-        size: '2Y',
-        color: 'Rose',
-        price: { selling: 0, original: 0, currency: 'INR' },
-        stock: 0,
-        isActive: true,
-      },
-    ])
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-[1.05rem] font-semibold text-admin-ink">Variants</h2>
-          <p className="mt-0.5 text-[0.82rem] text-muted">
-            Size, color, pricing, stock, and active state
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={addVariant}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-accent-pink px-3 py-2 text-[0.82rem] font-medium text-burgundy transition hover:bg-accent-pink-deep"
-        >
-          <IconPlus className="h-3.5 w-3.5" />
-          Add variant
-        </button>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-[900px] w-full text-left text-[0.85rem]">
-          <thead>
-            <tr className="border-b border-border text-[0.68rem] tracking-[0.08em] text-muted-light uppercase">
-              <th className="py-2 pr-2 font-medium">SKU</th>
-              <th className="py-2 pr-2 font-medium">Color</th>
-              <th className="py-2 pr-2 font-medium">Size</th>
-              <th className="py-2 pr-2 font-medium">Selling</th>
-              <th className="py-2 pr-2 font-medium">Original</th>
-              <th className="py-2 pr-2 font-medium">Stock</th>
-              <th className="py-2 pr-2 font-medium">Active</th>
-              <th className="py-2 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {draft.variants.map((variant, index) => (
-              <tr key={variant.id} className="border-b border-border/60">
-                <td className="py-2 pr-2">
-                  <input
-                    className={fieldClass}
-                    value={variant.sku}
-                    onChange={(e) => updateVariant(index, { sku: e.target.value, id: e.target.value || variant.id })}
-                  />
-                </td>
-                <td className="py-2 pr-2">
-                  <input
-                    className={fieldClass}
-                    value={variant.color}
-                    onChange={(e) => updateVariant(index, { color: e.target.value })}
-                  />
-                </td>
-                <td className="py-2 pr-2">
-                  <input
-                    className={fieldClass}
-                    value={variant.size}
-                    onChange={(e) => updateVariant(index, { size: e.target.value })}
-                  />
-                </td>
-                <td className="py-2 pr-2">
-                  <input
-                    type="number"
-                    className={fieldClass}
-                    value={variant.price.selling}
-                    onChange={(e) => updatePrice(index, 'selling', e.target.value)}
-                  />
-                </td>
-                <td className="py-2 pr-2">
-                  <input
-                    type="number"
-                    className={fieldClass}
-                    value={variant.price.original}
-                    onChange={(e) => updatePrice(index, 'original', e.target.value)}
-                  />
-                </td>
-                <td className="py-2 pr-2">
-                  <input
-                    type="number"
-                    className={fieldClass}
-                    value={variant.stock}
-                    onChange={(e) =>
-                      updateVariant(index, { stock: Number(e.target.value) || 0 })
-                    }
-                  />
-                </td>
-                <td className="py-2 pr-2">
-                  <input
-                    type="checkbox"
-                    checked={variant.isActive}
-                    onChange={(e) => updateVariant(index, { isActive: e.target.checked })}
-                    className="h-4 w-4 accent-burgundy"
-                  />
-                </td>
-                <td className="py-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onChange(
-                        'variants',
-                        draft.variants.filter((_, i) => i !== index),
-                      )
-                    }
-                    className="text-[0.8rem] text-muted hover:text-burgundy"
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {draft.variants.length === 0 ? (
-          <p className="mt-4 text-[0.8rem] text-muted">No variants yet.</p>
-        ) : null}
       </div>
     </div>
   )
