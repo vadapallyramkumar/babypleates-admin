@@ -34,15 +34,28 @@ function messageFromBody(parsed: unknown, status: number): string {
   return `Request failed (${status})`
 }
 
+function getWriteApiKey(): string {
+  return import.meta.env.VITE_API_WRITE_KEY?.trim() ?? ''
+}
+
+function isWriteMethod(method?: string): boolean {
+  const m = (method ?? 'GET').toUpperCase()
+  return m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS'
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, ...rest } = options
   const url = `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`
+  const writeKey = getWriteApiKey()
 
   const response = await fetch(url, {
     ...rest,
     headers: {
       Accept: 'application/json',
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(isWriteMethod(rest.method) && writeKey
+        ? { Authorization: `Bearer ${writeKey}` }
+        : {}),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,

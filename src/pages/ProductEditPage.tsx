@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { fetchCategories } from '../api/categories'
 import { createProduct, fetchProductBySlug, updateProduct } from '../api/products'
+import { MediaImageList } from '../components/media/MediaImageList'
 import { IconPlus } from '../components/icons'
 import {
   emptyProduct,
@@ -384,49 +385,19 @@ function MediaPanel({
   return (
     <div className="space-y-8">
       <section>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-[1.05rem] font-semibold text-admin-ink">Product images</h2>
-            <p className="mt-0.5 text-[0.82rem] text-muted">
-              Shared gallery paths used as product defaults
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setImages([...draft.images, ''])}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent-pink px-3 py-2 text-[0.82rem] font-medium text-burgundy transition hover:bg-accent-pink-deep"
-          >
-            <IconPlus className="h-3.5 w-3.5" />
-            Add image path
-          </button>
+        <div className="mb-4">
+          <h2 className="text-[1.05rem] font-semibold text-admin-ink">Product images</h2>
+          <p className="mt-0.5 text-[0.82rem] text-muted">
+            Shared gallery used as product defaults — pick from the media library
+          </p>
         </div>
 
-        <div className="mt-4 space-y-2">
-          {draft.images.map((url, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                className={fieldClass}
-                value={url}
-                onChange={(e) => {
-                  const next = [...draft.images]
-                  next[index] = e.target.value
-                  setImages(next)
-                }}
-                placeholder="/pattu.png"
-              />
-              <button
-                type="button"
-                onClick={() => setImages(draft.images.filter((_, i) => i !== index))}
-                className="shrink-0 rounded-lg px-2 text-[0.8rem] text-muted hover:text-burgundy"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          {draft.images.length === 0 ? (
-            <p className="text-[0.8rem] text-muted">No product images yet.</p>
-          ) : null}
-        </div>
+        <MediaImageList
+          urls={draft.images}
+          onChange={setImages}
+          emptyLabel="Opens the media library so you can pick product images"
+          addLabel="Add image"
+        />
       </section>
 
       <section>
@@ -470,7 +441,7 @@ function MediaPanel({
             </div>
 
             {gallery ? (
-              <div className="mt-4 space-y-3 rounded-xl border border-border/70 p-4">
+              <div className="mt-4 space-y-4 rounded-xl border border-border/70 p-4">
                 <label className="flex flex-col gap-1.5">
                   <span className={labelClass}>Color name</span>
                   <input
@@ -488,55 +459,24 @@ function MediaPanel({
                   />
                 </label>
 
-                <div className="space-y-2">
-                  {gallery.images.map((url, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        className={fieldClass}
-                        value={url}
-                        onChange={(e) => {
-                          const next = [...gallery.images]
-                          next[index] = e.target.value
-                          updateGalleryImages(gallery.color, next)
-                        }}
-                        placeholder="/pattu.png"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateGalleryImages(
-                            gallery.color,
-                            gallery.images.filter((_, i) => i !== index),
-                          )
-                        }
-                        className="shrink-0 rounded-lg px-2 text-[0.8rem] text-muted hover:text-burgundy"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <MediaImageList
+                  urls={gallery.images}
+                  onChange={(images) => updateGalleryImages(gallery.color, images)}
+                  emptyLabel="Pick images for this color from the media library"
+                  addLabel="Add image"
+                />
 
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateGalleryImages(gallery.color, [...gallery.images, ''])}
-                    className="rounded-lg bg-admin-bg px-3 py-2 text-[0.82rem] font-medium text-admin-ink hover:bg-border/50"
-                  >
-                    Add image path
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setColorGalleries(
-                        draft.colorGalleries.filter((g) => g.color !== gallery.color),
-                      )
-                    }
-                    className="rounded-lg px-3 py-2 text-[0.82rem] font-medium text-muted hover:text-burgundy"
-                  >
-                    Remove color
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setColorGalleries(
+                      draft.colorGalleries.filter((g) => g.color !== gallery.color),
+                    )
+                  }
+                  className="rounded-lg px-3 py-2 text-[0.82rem] font-medium text-muted transition hover:text-burgundy"
+                >
+                  Remove color
+                </button>
               </div>
             ) : null}
           </>

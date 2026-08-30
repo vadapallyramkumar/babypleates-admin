@@ -4,7 +4,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { createCategory, updateCategory, type CategoryPayload } from '../../api/categories'
 import type { Category } from '../../data/store'
 import { ApiError } from '../../lib/api'
+import { mediaThumbUrl } from '../../lib/mediaUrl'
 import { slugify } from '../../lib/slug'
+import { IconImage } from '../icons'
+import { MediaPickerModal } from '../media/MediaPickerModal'
 
 const fieldClass =
   'w-full rounded-lg border border-border bg-white px-3 py-2.5 text-[0.9rem] text-admin-ink outline-none transition placeholder:text-muted-light focus:border-burgundy/40 focus:ring-2 focus:ring-burgundy/15'
@@ -25,9 +28,9 @@ export function CategoryForm({ mode, initial }: CategoryFormProps) {
   const [description, setDescription] = useState(initial?.description ?? '')
   const [sortOrder, setSortOrder] = useState(String(initial?.sortOrder ?? 0))
   const [isActive, setIsActive] = useState(initial?.isActive ?? true)
-  const [filter, setFilter] = useState(initial?.filter ?? '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   function buildPayload(): CategoryPayload | null {
     const trimmedName = name.trim()
@@ -38,7 +41,7 @@ export function CategoryForm({ mode, initial }: CategoryFormProps) {
       return null
     }
     if (!image.trim()) {
-      setError('Image path is required.')
+      setError('Image is required — choose one from the media library.')
       return null
     }
     if (!Number.isFinite(order) || order < 0) {
@@ -48,7 +51,6 @@ export function CategoryForm({ mode, initial }: CategoryFormProps) {
 
     const slug = initial?.slug || slugify(trimmedName)
     const id = initial?.id || slug
-    const trimmedFilter = filter.trim()
 
     setError('')
     return {
@@ -59,7 +61,6 @@ export function CategoryForm({ mode, initial }: CategoryFormProps) {
       description: description.trim(),
       sortOrder: order,
       isActive,
-      ...(trimmedFilter ? { filter: trimmedFilter } : {}),
     }
   }
 
@@ -130,20 +131,62 @@ export function CategoryForm({ mode, initial }: CategoryFormProps) {
             />
           </label>
 
-          <label className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5">
             <span className={labelClass}>Image</span>
-            <input
-              type="text"
-              name="image"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder="/sunset.png"
-              className={fieldClass}
-            />
-            <span className="text-[0.75rem] text-muted-light">
-              Path or URL used on the storefront (e.g. /sunset.png)
-            </span>
-          </label>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className={[
+                'flex w-full items-center gap-4 rounded-xl border border-dashed px-4 py-4 text-left transition',
+                image
+                  ? 'border-border bg-white hover:border-burgundy/35'
+                  : 'border-border bg-admin-bg/40 hover:border-burgundy/40 hover:bg-accent-pink/30',
+              ].join(' ')}
+            >
+              {image ? (
+                <>
+                  <span className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-media-placeholder ring-1 ring-border/70">
+                    <img
+                      src={mediaThumbUrl(image, 128)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[0.95rem] font-medium text-admin-ink">
+                      Image selected
+                    </span>
+                    <span className="mt-1 block text-[0.82rem] text-muted">
+                      Click to choose a different image from media
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-card text-muted ring-1 ring-border/70">
+                    <IconImage className="h-6 w-6" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[0.95rem] font-medium text-admin-ink">
+                      Choose from media
+                    </span>
+                    <span className="mt-1 block text-[0.82rem] text-muted">
+                      Opens the media library so you can pick an image
+                    </span>
+                  </span>
+                </>
+              )}
+            </button>
+            {image ? (
+              <button
+                type="button"
+                onClick={() => setImage('')}
+                className="self-start text-[0.78rem] font-medium text-muted transition hover:text-burgundy"
+              >
+                Clear image
+              </button>
+            ) : null}
+          </div>
 
           <label className="flex flex-col gap-1.5">
             <span className={labelClass}>Description</span>
@@ -167,17 +210,6 @@ export function CategoryForm({ mode, initial }: CategoryFormProps) {
                 step={1}
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
-                className={fieldClass}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={labelClass}>Filter (optional)</span>
-              <input
-                type="text"
-                name="filter"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder="bestseller"
                 className={fieldClass}
               />
             </label>
@@ -216,6 +248,13 @@ export function CategoryForm({ mode, initial }: CategoryFormProps) {
           </button>
         </div>
       </form>
+
+      <MediaPickerModal
+        open={pickerOpen}
+        selectedUrl={image}
+        onClose={() => setPickerOpen(false)}
+        onSelect={setImage}
+      />
     </div>
   )
 }

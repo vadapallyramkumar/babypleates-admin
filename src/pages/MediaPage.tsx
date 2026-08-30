@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { fetchMediaAssets, type MediaAsset } from '../api/media'
 import { PageHeader } from '../components/admin/ui'
 import { IconCheck, IconCopy, IconImage, IconPlus } from '../components/icons'
+import { mediaThumbUrl } from '../lib/mediaUrl'
 
 type ViewMode = 'grid' | 'list'
 
@@ -13,24 +14,6 @@ function formatBytes(bytes: number | null): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-/** Display-only resized URL — clipboard still uses the original asset.url. */
-function mediaThumbUrl(url: string, width: number): string {
-  if (!url) return url
-  try {
-    const parsed = new URL(url)
-    if (parsed.hostname.includes('images.unsplash.com')) {
-      parsed.searchParams.set('auto', 'format')
-      parsed.searchParams.set('fit', 'crop')
-      parsed.searchParams.set('w', String(width))
-      parsed.searchParams.set('q', '60')
-      return parsed.toString()
-    }
-  } catch {
-    // relative paths — leave as-is
-  }
-  return url
 }
 
 function isVideo(asset: MediaAsset): boolean {

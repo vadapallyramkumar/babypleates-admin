@@ -32,6 +32,9 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          VITE_API_BASE_URL: https://babypleats-api.onrender.com
+          VITE_API_WRITE_KEY: ${{ secrets.VITE_API_WRITE_KEY }}
         run: npm run build
 
       - name: GitHub Pages SPA fallback
