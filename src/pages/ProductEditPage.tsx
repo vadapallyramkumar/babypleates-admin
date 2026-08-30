@@ -43,7 +43,6 @@ function ProductEditor({ mode, initial, categories }: ProductEditorProps) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [draft, setDraft] = useState<Product>(initial)
-  const [slugTouched, setSlugTouched] = useState(mode === 'edit')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -65,11 +64,9 @@ function ProductEditor({ mode, initial, categories }: ProductEditorProps) {
   function handleNameChange(name: string) {
     setDraft((prev) => {
       const next = { ...prev, name }
-      if (!slugTouched) {
-        const slug = slugify(name)
-        next.slug = slug
-        if (mode === 'create') next.id = slug ? `bp-${slug}` : ''
-      }
+      const slug = slugify(name)
+      next.slug = slug || '';
+      if (mode === 'create') next.id = slug ? `bp-${slug}` : '';
       return next
     })
   }
