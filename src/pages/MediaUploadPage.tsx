@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createMediaAsset, type CreateMediaPayload } from '../api/media'
+import { uploadMediaImage } from '../api/media'
+import { apiWriteKeyError } from '../lib/api'
 
 const fieldClass =
   'w-full rounded-lg border border-border bg-white px-3 py-2.5 text-[0.9rem] text-admin-ink outline-none transition placeholder:text-muted-light focus:border-burgundy/40 focus:ring-2 focus:ring-burgundy/15'
@@ -10,55 +11,45 @@ const labelClass = 'text-[0.8rem] font-medium text-admin-ink'
 
 export function MediaUploadPage() {
   const navigate = useNavigate()
-  const [filename, setFilename] = useState('')
-  const [url, setUrl] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState('')
   const [alt, setAlt] = useState('')
-  const [mimeType, setMimeType] = useState('image/jpeg')
-  const [fileLabel, setFileLabel] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  function handleFileChange(file: File | null) {
-    if (!file) {
-      setFileLabel('')
+  const configError = apiWriteKeyError()
+
+  function handleFileChange(next: File | null) {
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+
+    if (!next) {
+      setFile(null)
+      setPreviewUrl('')
       return
     }
-    setFileLabel(file.name)
-    if (!filename.trim()) setFilename(file.name)
-    if (!url.trim()) setUrl(`/${file.name}`)
-    if (file.type) setMimeType(file.type)
-  }
 
-  function buildPayload(): CreateMediaPayload | null {
-    const trimmedFilename = filename.trim()
-    const trimmedUrl = url.trim()
-
-    if (!trimmedFilename) {
-      setError('Filename is required.')
-      return null
-    }
-    if (!trimmedUrl) {
-      setError('URL / path is required.')
-      return null
-    }
-
+    setFile(next)
+    setPreviewUrl(URL.createObjectURL(next))
     setError('')
-    return {
-      filename: trimmedFilename,
-      url: trimmedUrl,
-      alt: alt.trim(),
-      mimeType: mimeType.trim() || 'application/octet-stream',
-    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const payload = buildPayload()
-    if (!payload) return
+
+    if (configError) {
+      setError(configError)
+      return
+    }
+    if (!file) {
+      setError('Choose an image to upload.')
+      return
+    }
 
     setSubmitting(true)
+    setError('')
+
     try {
-      await createMediaAsset(payload)
+      await uploadMediaImage(file, alt)
       navigate('/media', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed.')
@@ -80,9 +71,20 @@ export function MediaUploadPage() {
           Upload media
         </h1>
         <p className="mt-1 text-[0.88rem] text-muted">
-          Register an image for products, categories, and collections
+          Upload an image for products, categories, and collections
         </p>
       </div>
+
+      {configError ? (
+        <div
+          className="mb-5 max-w-2xl rounded-xl border border-burgundy/20 bg-accent-pink/50 px-4 py-3 text-[0.88rem] text-burgundy-soft"
+          role="status"
+        >
+          {configError}. Add it to{' '}
+          <code className="rounded bg-white/70 px-1 py-0.5 text-[0.8rem]">.env</code>, then
+          restart the dev server.
+        </div>
+      ) : null}
 
       <form
         onSubmit={(e) => void handleSubmit(e)}
@@ -92,12 +94,19 @@ export function MediaUploadPage() {
         <div className="space-y-5 p-5 sm:p-6">
           <div>
             <span className={labelClass}>File</span>
-            <label className="mt-1.5 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-admin-bg/50 px-4 py-10 transition hover:border-burgundy/30 hover:bg-accent-pink/40">
+            <label className="mt-1.5 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-admin-bg/50 px-4 py-10 transition hover:border-burgundy/30 hover:bg-accent-pink/40">
+              {previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt=""
+                  className="max-h-48 rounded-lg object-contain"
+                />
+              ) : null}
               <span className="text-[0.9rem] font-medium text-admin-ink">
-                {fileLabel || 'Choose an image'}
+                {file?.name || 'Choose an image'}
               </span>
               <span className="text-[0.78rem] text-muted">
-                Local pick fills filename, path, and mime type — upload API comes later
+                JPG, PNG, WebP, or GIF — max 8 MB
               </span>
               <input
                 type="file"
@@ -109,33 +118,6 @@ export function MediaUploadPage() {
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className={labelClass}>Filename</span>
-            <input
-              type="text"
-              name="filename"
-              value={filename}
-              onChange={(e) => setFilename(e.target.value)}
-              placeholder="sunset.png"
-              className={fieldClass}
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className={labelClass}>URL / path</span>
-            <input
-              type="text"
-              name="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="/sunset.png"
-              className={fieldClass}
-            />
-            <span className="text-[0.75rem] text-muted-light">
-              Storefront path or absolute URL (e.g. /sunset.png)
-            </span>
-          </label>
-
-          <label className="flex flex-col gap-1.5">
             <span className={labelClass}>Alt text</span>
             <input
               type="text"
@@ -143,18 +125,6 @@ export function MediaUploadPage() {
               value={alt}
               onChange={(e) => setAlt(e.target.value)}
               placeholder="Rose kanjeevaram pavadai on ivory backdrop"
-              className={fieldClass}
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className={labelClass}>MIME type</span>
-            <input
-              type="text"
-              name="mimeType"
-              value={mimeType}
-              onChange={(e) => setMimeType(e.target.value)}
-              placeholder="image/jpeg"
               className={fieldClass}
             />
           </label>
@@ -175,10 +145,10 @@ export function MediaUploadPage() {
           </Link>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || Boolean(configError)}
             className="rounded-lg bg-burgundy px-4 py-2.5 text-[0.88rem] font-semibold text-white transition hover:bg-burgundy-dark disabled:opacity-60"
           >
-            {submitting ? 'Saving…' : 'Save media'}
+            {submitting ? 'Uploading…' : 'Upload'}
           </button>
         </div>
       </form>

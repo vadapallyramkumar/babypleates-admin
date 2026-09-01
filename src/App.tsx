@@ -11,7 +11,6 @@ import { MediaUploadPage } from './pages/MediaUploadPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ProductCreatePage, ProductEditPage } from './pages/ProductEditPage'
 import { ProductsPage } from './pages/ProductsPage'
-import { SettingsPage } from './pages/SettingsPage'
 
 export default function App() {
   const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -35,7 +34,7 @@ export default function App() {
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="media" element={<MediaPage />} />
             <Route path="media/new" element={<MediaUploadPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            {/* <Route path="settings" element={<SettingsPage />} /> */}
           </Route>
         </Route>
 

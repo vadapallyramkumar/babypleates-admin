@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchMediaAssets, type MediaAsset } from '../api/media'
+import { deleteMediaImage, fetchMediaAssets, type MediaAsset } from '../api/media'
 import { PageHeader } from '../components/admin/ui'
-import { IconCheck, IconCopy, IconImage, IconPlus } from '../components/icons'
+import { IconCheck, IconCopy, IconImage, IconPlus, IconTrash } from '../components/icons'
 import { mediaThumbUrl } from '../lib/mediaUrl'
 
 type ViewMode = 'grid' | 'list'
@@ -108,6 +108,7 @@ export function MediaPage() {
   const [error, setError] = useState('')
   const [view, setView] = useState<ViewMode>('grid')
   const [page, setPage] = useState(1)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -148,6 +149,25 @@ export function MediaPage() {
   function setViewMode(next: ViewMode) {
     setView(next)
     setPage(1)
+  }
+
+  async function handleDelete(asset: MediaAsset) {
+    const label = asset.filename || asset.publicId
+    if (!window.confirm(`Delete "${label}" from Cloudinary? This cannot be undone.`)) {
+      return
+    }
+
+    setDeletingId(asset.publicId)
+    setError('')
+
+    try {
+      await deleteMediaImage(asset.publicId)
+      setAssets((current) => current.filter((a) => a.publicId !== asset.publicId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete image.')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   return (
@@ -219,8 +239,7 @@ export function MediaPage() {
         <div className="mt-8 rounded-2xl border border-dashed border-border bg-card px-6 py-16 text-center shadow-sm">
           <p className="text-[1.05rem] font-semibold text-admin-ink">No media yet</p>
           <p className="mx-auto mt-2 max-w-md text-[0.9rem] text-muted">
-            The library is ready. Once the list API is connected, uploaded assets will show
-            here. You can still register media with Upload.
+            Upload images via the API and they will appear here for products and categories.
           </p>
           <Link
             to="/media/new"
@@ -236,11 +255,21 @@ export function MediaPage() {
             <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {visibleAssets.map((asset) => (
                 <li
-                  key={asset.id}
-                  className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm content-visibility-auto"
+                  key={asset.publicId}
+                  className="group overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm content-visibility-auto"
                 >
-                  <div className="flex aspect-square items-center justify-center bg-media-placeholder">
+                  <div className="relative flex aspect-square items-center justify-center bg-media-placeholder">
                     <MediaThumb asset={asset} size="grid" />
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(asset)}
+                      disabled={deletingId === asset.publicId}
+                      title="Delete image"
+                      aria-label={`Delete ${asset.filename}`}
+                      className="absolute right-2 top-2 rounded-md bg-white/90 p-1.5 text-muted shadow-sm opacity-0 transition hover:text-burgundy group-hover:opacity-100 disabled:opacity-60"
+                    >
+                      <IconTrash className="h-4 w-4" />
+                    </button>
                   </div>
                   <div className="px-3 py-2.5">
                     <p className="truncate text-[0.88rem] font-medium text-admin-ink">
@@ -255,7 +284,7 @@ export function MediaPage() {
             <ul className="mt-8 divide-y divide-border overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
               {visibleAssets.map((asset) => (
                 <li
-                  key={asset.id}
+                  key={asset.publicId}
                   className="flex items-center gap-4 px-4 py-3 transition hover:bg-admin-bg/80"
                 >
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-media-placeholder">
@@ -271,6 +300,16 @@ export function MediaPage() {
                   <span className="w-16 text-right text-[0.8rem] tabular-nums text-muted">
                     {formatBytes(asset.sizeBytes)}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(asset)}
+                    disabled={deletingId === asset.publicId}
+                    title="Delete image"
+                    aria-label={`Delete ${asset.filename}`}
+                    className="rounded-md p-1.5 text-muted transition hover:bg-admin-bg hover:text-burgundy disabled:opacity-60"
+                  >
+                    <IconTrash className="h-4 w-4" />
+                  </button>
                 </li>
               ))}
             </ul>

@@ -43,6 +43,48 @@ function isWriteMethod(method?: string): boolean {
   return m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS'
 }
 
+export function apiWriteKeyError(): string | null {
+  if (!getWriteApiKey()) {
+    return 'Missing VITE_API_WRITE_KEY in .env (same value as API_WRITE_KEY on the API service)'
+  }
+  return null
+}
+
+async function parseResponse<T>(response: Response): Promise<T> {
+  const text = await response.text()
+  let parsed: unknown = null
+  if (text) {
+    try {
+      parsed = JSON.parse(text) as unknown
+    } catch {
+      parsed = text
+    }
+  }
+
+  if (!response.ok) {
+    throw new ApiError(messageFromBody(parsed, response.status), response.status, parsed)
+  }
+
+  return parsed as T
+}
+
+/** Multipart upload (e.g. POST /v1/media/upload). Do not set Content-Type — the browser adds the boundary. */
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const url = `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`
+  const writeKey = getWriteApiKey()
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(writeKey ? { Authorization: `Bearer ${writeKey}` } : {}),
+    },
+    body: formData,
+  })
+
+  return parseResponse<T>(response)
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, ...rest } = options
   const url = `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`
@@ -61,21 +103,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
 
-  const text = await response.text()
-  let parsed: unknown = null
-  if (text) {
-    try {
-      parsed = JSON.parse(text) as unknown
-    } catch {
-      parsed = text
-    }
-  }
-
-  if (!response.ok) {
-    throw new ApiError(messageFromBody(parsed, response.status), response.status, parsed)
-  }
-
-  return parsed as T
+  return parseResponse<T>(response)
 }
 
 export function unwrapData<T>(payload: unknown): T {

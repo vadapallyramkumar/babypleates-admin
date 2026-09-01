@@ -133,7 +133,7 @@ export function MediaPickerModal({
               {assets.map((asset) => {
                 const selected = asset.url === selectedUrl
                 return (
-                  <li key={asset.id}>
+                  <li key={asset.publicId}>
                     <button
                       type="button"
                       title={asset.filename}

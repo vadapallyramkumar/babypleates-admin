@@ -7,9 +7,9 @@ const navItems = [
   { to: '/', label: 'Overview', end: true },
   { to: '/products', label: 'Products' },
   { to: '/categories', label: 'Categories' },
-  { to: '/inventory', label: 'Inventory' },
+  // { to: '/inventory', label: 'Inventory' },
   { to: '/media', label: 'Media' },
-  { to: '/settings', label: 'Settings' },
+  // { to: '/settings', label: 'Settings' },
 ] as const
 
 function BrandBlock({ id }: { id?: string }) {
