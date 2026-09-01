@@ -34,7 +34,6 @@ export default function App() {
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="media" element={<MediaPage />} />
             <Route path="media/new" element={<MediaUploadPage />} />
-            {/* <Route path="settings" element={<SettingsPage />} /> */}
           </Route>
         </Route>
 
