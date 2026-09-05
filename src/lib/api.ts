@@ -1,3 +1,5 @@
+import { getAccessToken, signOut } from './auth'
+
 const DEFAULT_BASE = 'https://babypleats-api.onrender.com'
 
 export function getApiBaseUrl(): string {
@@ -19,6 +21,10 @@ export class ApiError extends Error {
 
 type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown
+  /** Skip Authorization header (e.g. login). */
+  skipAuth?: boolean
+  /** Do not redirect to /login on 401. */
+  skipAuthRedirect?: boolean
 }
 
 function messageFromBody(parsed: unknown, status: number): string {
@@ -34,24 +40,26 @@ function messageFromBody(parsed: unknown, status: number): string {
   return `Request failed (${status})`
 }
 
-function getWriteApiKey(): string {
-  return import.meta.env.VITE_API_WRITE_KEY?.trim() ?? ''
-}
-
-function isWriteMethod(method?: string): boolean {
-  const m = (method ?? 'GET').toUpperCase()
-  return m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS'
-}
-
-export function apiWriteKeyError(): string | null {
-  if (!getWriteApiKey()) {
-    return 'Missing VITE_API_WRITE_KEY in .env (same value as API_WRITE_KEY on the API service)'
+function handleUnauthorized(path: string, skipAuthRedirect?: boolean) {
+  if (skipAuthRedirect) return
+  if (path.includes('/auth/login')) return
+  signOut()
+  if (typeof window !== 'undefined' && !window.location.pathname.endsWith('/login')) {
+    const base = import.meta.env.BASE_URL || '/'
+    const loginPath = `${base.replace(/\/$/, '')}/login`
+    window.location.assign(loginPath)
   }
-  return null
 }
 
-async function parseResponse<T>(response: Response): Promise<T> {
-  // DELETE/PUT soft-deletes often return 204/205 with an empty body.
+async function parseResponse<T>(
+  response: Response,
+  path: string,
+  skipAuthRedirect?: boolean,
+): Promise<T> {
+  if (response.status === 401) {
+    handleUnauthorized(path, skipAuthRedirect)
+  }
+
   if (response.status === 204 || response.status === 205) {
     if (!response.ok) {
       throw new ApiError(`Request failed (${response.status})`, response.status, null)
@@ -79,46 +87,47 @@ async function parseResponse<T>(response: Response): Promise<T> {
     throw new ApiError(messageFromBody(parsed, response.status), response.status, parsed)
   }
 
-  // Successful responses with no body (e.g. DELETE 200) are still success.
   return parsed as T
+}
+
+function authHeaders(skipAuth?: boolean): Record<string, string> {
+  if (skipAuth) return {}
+  const token = getAccessToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 /** Multipart upload (e.g. POST /v1/media/upload). Do not set Content-Type — the browser adds the boundary. */
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
   const url = `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`
-  const writeKey = getWriteApiKey()
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
-      ...(writeKey ? { Authorization: `Bearer ${writeKey}` } : {}),
+      ...authHeaders(),
     },
     body: formData,
   })
 
-  return parseResponse<T>(response)
+  return parseResponse<T>(response, path)
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, headers, ...rest } = options
+  const { body, headers, skipAuth, skipAuthRedirect, ...rest } = options
   const url = `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`
-  const writeKey = getWriteApiKey()
 
   const response = await fetch(url, {
     ...rest,
     headers: {
       Accept: 'application/json',
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(isWriteMethod(rest.method) && writeKey
-        ? { Authorization: `Bearer ${writeKey}` }
-        : {}),
+      ...authHeaders(skipAuth),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
 
-  return parseResponse<T>(response)
+  return parseResponse<T>(response, path, skipAuthRedirect)
 }
 
 export function unwrapData<T>(payload: unknown): T {

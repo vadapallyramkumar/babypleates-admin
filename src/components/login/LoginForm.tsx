@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { login as loginRequest } from '../../api/auth'
+import { ApiError } from '../../lib/api'
 import { getRememberPreference, signIn } from '../../lib/auth'
 import {
   IconEye,
@@ -17,8 +19,9 @@ export function LoginForm() {
   const [remember, setRemember] = useState(getRememberPreference)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
 
@@ -27,8 +30,24 @@ export function LoginForm() {
       return
     }
 
-    signIn(remember)
-    navigate('/', { replace: true })
+    setSubmitting(true)
+    try {
+      const result = await loginRequest(email.trim(), password)
+      signIn({
+        token: result.accessToken,
+        user: result.user,
+        remember,
+      })
+      navigate('/', { replace: true })
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message || 'Invalid email or password.')
+      } else {
+        setError(err instanceof Error ? err.message : 'Sign in failed.')
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -61,7 +80,8 @@ export function LoginForm() {
                   placeholder="admin@babypleates.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-white py-2.5 pr-3 pl-10 text-[0.9rem] text-burgundy outline-none transition placeholder:text-muted-light focus:border-burgundy/40 focus:ring-2 focus:ring-burgundy/15"
+                  disabled={submitting}
+                  className="w-full rounded-lg border border-border bg-white py-2.5 pr-3 pl-10 text-[0.9rem] text-burgundy outline-none transition placeholder:text-muted-light focus:border-burgundy/40 focus:ring-2 focus:ring-burgundy/15 disabled:opacity-60"
                 />
               </span>
             </label>
@@ -77,7 +97,8 @@ export function LoginForm() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-white py-2.5 pr-20 pl-10 text-[0.9rem] text-burgundy outline-none transition placeholder:text-muted-light focus:border-burgundy/40 focus:ring-2 focus:ring-burgundy/15"
+                  disabled={submitting}
+                  className="w-full rounded-lg border border-border bg-white py-2.5 pr-20 pl-10 text-[0.9rem] text-burgundy outline-none transition placeholder:text-muted-light focus:border-burgundy/40 focus:ring-2 focus:ring-burgundy/15 disabled:opacity-60"
                 />
                 <button
                   type="button"
@@ -100,6 +121,7 @@ export function LoginForm() {
                   type="checkbox"
                   checked={remember}
                   onChange={(e) => setRemember(e.target.checked)}
+                  disabled={submitting}
                   className="h-3.5 w-3.5 accent-burgundy"
                 />
                 Remember me
@@ -121,10 +143,11 @@ export function LoginForm() {
 
             <button
               type="submit"
-              className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-burgundy py-3 text-[0.92rem] font-semibold text-white shadow-sm transition hover:bg-burgundy-dark hover:shadow-md active:scale-[0.99]"
+              disabled={submitting}
+              className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-burgundy py-3 text-[0.92rem] font-semibold text-white shadow-sm transition hover:bg-burgundy-dark hover:shadow-md active:scale-[0.99] disabled:opacity-60"
             >
               <IconLock className="h-4 w-4" />
-              Sign in to Admin
+              {submitting ? 'Signing in…' : 'Sign in to Admin'}
             </button>
           </form>
         </div>

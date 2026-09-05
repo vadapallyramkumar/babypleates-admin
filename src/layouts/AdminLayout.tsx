@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { logout as logoutRequest } from '../api/auth'
 import { IconClose, IconMenu } from '../components/icons'
 import { signOut } from '../lib/auth'
 
@@ -78,8 +79,13 @@ export function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const titleId = useId()
 
-  function handleSignOut() {
+  async function handleSignOut() {
     setMobileOpen(false)
+    try {
+      await logoutRequest()
+    } catch {
+      // Best-effort: clear local session even if the API call fails.
+    }
     signOut()
     navigate('/login', { replace: true })
   }

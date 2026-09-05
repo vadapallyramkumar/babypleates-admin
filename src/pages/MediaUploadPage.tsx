@@ -1,9 +1,8 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { uploadMediaImage } from '../api/media'
 import { noticeLocationState } from '../components/NoticeBanner'
-import { apiWriteKeyError } from '../lib/api'
 
 const fieldClass =
   'w-full rounded-lg border border-border bg-white px-3 py-2.5 text-[0.9rem] text-admin-ink outline-none transition placeholder:text-muted-light focus:border-burgundy/40 focus:ring-2 focus:ring-burgundy/15'
@@ -17,8 +16,6 @@ export function MediaUploadPage() {
   const [alt, setAlt] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-
-  const configError = apiWriteKeyError()
 
   function handleFileChange(next: File | null) {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
@@ -37,10 +34,6 @@ export function MediaUploadPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (configError) {
-      setError(configError)
-      return
-    }
     if (!file) {
       setError('Choose an image or video to upload.')
       return
@@ -78,17 +71,6 @@ export function MediaUploadPage() {
           Upload an image or video for products, categories, and trending
         </p>
       </div>
-
-      {configError ? (
-        <div
-          className="mb-5 max-w-2xl rounded-xl border border-burgundy/20 bg-accent-pink/50 px-4 py-3 text-[0.88rem] text-burgundy-soft"
-          role="status"
-        >
-          {configError}. Add it to{' '}
-          <code className="rounded bg-white/70 px-1 py-0.5 text-[0.8rem]">.env</code>, then
-          restart the dev server.
-        </div>
-      ) : null}
 
       <form
         onSubmit={(e) => void handleSubmit(e)}
@@ -157,7 +139,7 @@ export function MediaUploadPage() {
           </Link>
           <button
             type="submit"
-            disabled={submitting || Boolean(configError)}
+            disabled={submitting}
             className="rounded-lg bg-burgundy px-4 py-2.5 text-[0.88rem] font-semibold text-white transition hover:bg-burgundy-dark disabled:opacity-60"
           >
             {submitting ? 'Uploading…' : 'Upload'}
