@@ -32,9 +32,9 @@ export function ProductsPage() {
     setError('')
     try {
       const [{ products: list }, cats] = await Promise.all([
-        fetchProducts({ page: 1, limit: 100 }),
-        fetchCategories(),
-      ])
+          fetchProducts({ page: 1, limit: 100, includeInactive: true }),
+          fetchCategories({ includeInactive: true }),
+        ])
       setProducts(list)
       setCategories(cats)
     } catch (err) {
@@ -75,19 +75,29 @@ export function ProductsPage() {
   }, [products, categories, query, category, status])
 
   async function handleDelete(product: Product) {
-    const ok = window.confirm(`Delete product “${product.name}”?`)
-    if (!ok) return
+    const ok = window.confirm(
+      product.isActive
+        ? `Deactivate “${product.name}”? It will be hidden from the storefront but stay in admin as inactive.`
+        : `“${product.name}” is already inactive.`,
+    )
+    if (!ok || !product.isActive) return
     setDeletingId(product.id)
     setError('')
     try {
       await deleteProduct(product.id)
-      setProducts((prev) => prev.filter((p) => p.id !== product.id))
+      setProducts((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, isActive: false } : p)),
+      )
+      if (status === 'Active') setStatus('Inactive')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to delete product.')
     } finally {
       setDeletingId(null)
     }
   }
+
+  const activeCount = products.filter((p) => p.isActive).length
+  const inactiveCount = products.length - activeCount
 
   return (
     <div className="animate-fade-up px-8 py-8 lg:px-10">
@@ -96,7 +106,7 @@ export function ProductsPage() {
         subtitle={
           loading
             ? 'Loading products…'
-            : 'Manage products, variants, pricing and visibility'
+            : `${activeCount} active · ${inactiveCount} inactive`
         }
         action={
           <Link
@@ -149,9 +159,10 @@ export function ProductsPage() {
             onChange={(e) => setStatus(e.target.value as 'all' | ProductListStatus)}
             className="appearance-none rounded-lg border border-border bg-card py-2.5 pr-9 pl-3 text-[0.88rem] text-admin-ink outline-none focus:border-burgundy/30"
           >
-            <option value="all">Status</option>
+            <option value="all">All statuses</option>
             <option value="Active">Active</option>
             <option value="Low stock">Low stock</option>
+            <option value="Out of stock">Out of stock</option>
             <option value="Inactive">Inactive</option>
           </select>
           <IconChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-muted-light" />
@@ -183,9 +194,26 @@ export function ProductsPage() {
                 <li key={product.id} className="flex items-stretch gap-2">
                   <Link
                     to={`/products/${product.slug}?tab=details`}
-                    className="grid min-w-0 flex-1 grid-cols-[1.8fr_1.2fr_0.6fr_0.7fr_0.5fr_0.7fr] items-center gap-3 rounded-xl border border-border/50 bg-card px-4 py-3.5 text-[0.9rem] shadow-sm transition hover:border-burgundy/20 hover:shadow"
+                    className={[
+                      'grid min-w-0 flex-1 grid-cols-[1.8fr_1.2fr_0.6fr_0.7fr_0.5fr_0.7fr] items-center gap-3 rounded-xl border px-4 py-3.5 text-[0.9rem] shadow-sm transition hover:border-burgundy/20 hover:shadow',
+                      product.isActive
+                        ? 'border-border/50 bg-card'
+                        : 'border-border/40 bg-admin-bg/80',
+                    ].join(' ')}
                   >
-                    <span className="font-semibold text-admin-ink">{product.name}</span>
+                    <span
+                      className={[
+                        'font-semibold',
+                        product.isActive ? 'text-admin-ink' : 'text-muted',
+                      ].join(' ')}
+                    >
+                      {product.name}
+                      {!product.isActive ? (
+                        <span className="ml-2 inline-flex rounded-md bg-border/50 px-1.5 py-0.5 text-[0.7rem] font-medium tracking-wide text-muted uppercase">
+                          Inactive
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="text-muted">
                       {getCategoryName(product.categoryId, categories)}
                     </span>
@@ -198,11 +226,15 @@ export function ProductsPage() {
                   </Link>
                   <button
                     type="button"
-                    title="Delete product"
-                    aria-label={`Delete ${product.name}`}
-                    disabled={deletingId === product.id}
+                    title={product.isActive ? 'Deactivate product' : 'Already inactive'}
+                    aria-label={
+                      product.isActive
+                        ? `Deactivate ${product.name}`
+                        : `${product.name} is inactive`
+                    }
+                    disabled={deletingId === product.id || !product.isActive}
                     onClick={() => void handleDelete(product)}
-                    className="inline-flex items-center justify-center rounded-xl border border-border/50 bg-card px-3 text-muted shadow-sm transition hover:bg-attention-bg hover:text-burgundy disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-xl border border-border/50 bg-card px-3 text-muted shadow-sm transition hover:bg-attention-bg hover:text-burgundy disabled:opacity-40"
                   >
                     <IconTrash className="h-4 w-4" />
                   </button>

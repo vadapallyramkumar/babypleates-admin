@@ -15,6 +15,8 @@ export type ProductVariant = {
   stock: number
   isActive: boolean
   discountPercent?: number
+  /** Saved when marking out of stock so stock can be restored */
+  previousStock?: number
 }
 
 export type ColorGallery = {
@@ -28,7 +30,8 @@ export type Product = {
   name: string
   categoryId: string
   description: string
-  fabric: string
+  /** Optional — API omits this field when null/empty */
+  fabric?: string
   care: string[]
   images: string[]
   colorGalleries: ColorGallery[]
@@ -46,7 +49,21 @@ export type Product = {
   stock?: number
 }
 
-export type ProductListStatus = 'Active' | 'Low stock' | 'Inactive'
+/** Normalize API payloads so optional/omitted fields are safe for the editor. */
+export function normalizeProduct(raw: Product): Product {
+  return {
+    ...raw,
+    fabric: raw.fabric ?? '',
+    care: raw.care ?? [],
+    images: raw.images ?? [],
+    colorGalleries: raw.colorGalleries ?? [],
+    variants: raw.variants ?? [],
+    tags: raw.tags ?? [],
+    description: raw.description ?? '',
+  }
+}
+
+export type ProductListStatus = 'Active' | 'Low stock' | 'Out of stock' | 'Inactive'
 
 export const products: Product[] = [
   {
@@ -358,8 +375,12 @@ export function getProductById(id: string): Product | undefined {
 }
 
 export function getProductTotalStock(product: Product): number {
+  // Prefer live variant totals so Visibility “Out of stock” updates the sidebar immediately
+  if (product.variants?.length) {
+    return product.variants.reduce((sum, v) => sum + v.stock, 0)
+  }
   if (typeof product.stock === 'number') return product.stock
-  return product.variants.reduce((sum, v) => sum + v.stock, 0)
+  return 0
 }
 
 export function getProductListPrice(product: Product): number {
@@ -371,8 +392,32 @@ export function getProductListPrice(product: Product): number {
 export function getProductListStatus(product: Product): ProductListStatus {
   if (!product.isActive) return 'Inactive'
   const stock = getProductTotalStock(product)
+  if (stock <= 0) return 'Out of stock'
   if (stock <= 3) return 'Low stock'
   return 'Active'
+}
+
+export function isProductOutOfStock(product: Product): boolean {
+  const variants = product.variants ?? []
+  return variants.length > 0 && variants.every((v) => v.stock <= 0)
+}
+
+/** Soft out-of-stock: stock → 0, previousStock remembered for restore. */
+export function markProductOutOfStock(variants: ProductVariant[]): ProductVariant[] {
+  return variants.map((v) => ({
+    ...v,
+    previousStock: v.stock > 0 ? v.stock : (v.previousStock ?? 0),
+    stock: 0,
+  }))
+}
+
+/** Restore stock from previousStock (defaults to 1 if none saved). */
+export function markProductInStock(variants: ProductVariant[]): ProductVariant[] {
+  return variants.map((v) => {
+    const restored = v.previousStock != null && v.previousStock > 0 ? v.previousStock : 1
+    const { previousStock: _, ...rest } = v
+    return { ...rest, stock: restored }
+  })
 }
 
 export function getProductColorCount(product: Product): number {

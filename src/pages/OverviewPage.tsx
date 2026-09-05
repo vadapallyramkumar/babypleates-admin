@@ -26,8 +26,8 @@ export function OverviewPage() {
     async function load() {
       try {
         const [{ products: list }, cats] = await Promise.all([
-          fetchProducts({ page: 1, limit: 100 }),
-          fetchCategories(),
+          fetchProducts({ page: 1, limit: 100, includeInactive: true }),
+          fetchCategories({ includeInactive: true }),
         ])
         if (!cancelled) {
           setProducts(list)

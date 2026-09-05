@@ -9,6 +9,10 @@ import {
   getProductColorCount,
   getProductSizeCount,
   getProductTotalStock,
+  isProductOutOfStock,
+  markProductInStock,
+  markProductOutOfStock,
+  normalizeProduct,
   stockToneClass,
   type Category,
   type Product,
@@ -64,20 +68,33 @@ function ProductEditor({ mode, initial, categories }: ProductEditorProps) {
   function handleNameChange(name: string) {
     setDraft((prev) => {
       const next = { ...prev, name }
-      const slug = slugify(name)
-      next.slug = slug || '';
-      if (mode === 'create') next.id = slug ? `bp-${slug}` : '';
+      // Only auto-derive slug/id when creating — rewriting slug on edit breaks saves
+      // (API unique constraint) and can 404 the product URL.
+      if (mode === 'create') {
+        const slug = slugify(name)
+        next.slug = slug || ''
+        next.id = slug ? `bp-${slug}` : ''
+      }
       return next
     })
   }
 
   async function handleSave() {
-    if (!draft.name.trim()) {
+    const name = draft.name?.trim() ?? ''
+    const slug = draft.slug?.trim() ?? ''
+    const fabric = (draft.fabric ?? '').trim()
+    const description = (draft.description ?? '').trim()
+    const care = (draft.care ?? []).map((c) => c.trim()).filter(Boolean)
+    const tags = (draft.tags ?? []).map((t) => t.trim()).filter(Boolean)
+    const images = draft.images ?? []
+    const variants = draft.variants ?? []
+
+    if (!name) {
       setError('Name is required.')
       setTab('details')
       return
     }
-    if (!draft.slug.trim()) {
+    if (!slug) {
       setError('Slug is required.')
       setTab('details')
       return
@@ -87,16 +104,29 @@ function ProductEditor({ mode, initial, categories }: ProductEditorProps) {
       setTab('details')
       return
     }
+    if (images.length === 0) {
+      setError('Add at least one product image before saving.')
+      setTab('details')
+      return
+    }
+    if (variants.length === 0) {
+      setError('Add at least one variant (color/size) before saving.')
+      setTab('variants')
+      return
+    }
 
     const payload: Product = {
       ...draft,
-      id: draft.id || `bp-${draft.slug}`,
-      name: draft.name.trim(),
-      slug: draft.slug.trim(),
-      description: draft.description.trim(),
-      fabric: draft.fabric.trim(),
-      care: draft.care.map((c) => c.trim()).filter(Boolean),
-      tags: draft.tags.map((t) => t.trim()).filter(Boolean),
+      id: draft.id || `bp-${slug}`,
+      name,
+      slug,
+      description,
+      fabric,
+      care,
+      tags,
+      images,
+      variants,
+      colorGalleries: draft.colorGalleries ?? [],
       updatedAt: new Date().toISOString(),
       createdAt: draft.createdAt || new Date().toISOString(),
     }
@@ -274,7 +304,7 @@ function DetailsPanel({
           >
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
-                {cat.name}
+                {cat.isActive ? cat.name : `${cat.name} (Inactive)`}
               </option>
             ))}
           </select>
@@ -311,7 +341,7 @@ function DetailsPanel({
         <span className={labelClass}>Fabric (optional)</span>
         <input
           className={fieldClass}
-          value={draft.fabric}
+          value={draft.fabric ?? ''}
           onChange={(e) => onChange('fabric', e.target.value)}
           placeholder="Semi Kanjeevaram silk"
         />
@@ -322,20 +352,20 @@ function DetailsPanel({
           <span className={labelClass}>Care instructions (optional)</span>
           <button
             type="button"
-            onClick={() => onChange('care', [...draft.care, ''])}
+            onClick={() => onChange('care', [...(draft.care ?? []), ''])}
             className="text-[0.78rem] font-medium text-burgundy hover:text-burgundy-dark"
           >
             + Add line
           </button>
         </div>
         <div className="space-y-2">
-          {draft.care.map((line, index) => (
+          {(draft.care ?? []).map((line, index) => (
             <div key={index} className="flex gap-2">
               <input
                 className={fieldClass}
                 value={line}
                 onChange={(e) => {
-                  const next = [...draft.care]
+                  const next = [...(draft.care ?? [])]
                   next[index] = e.target.value
                   onChange('care', next)
                 }}
@@ -343,14 +373,19 @@ function DetailsPanel({
               />
               <button
                 type="button"
-                onClick={() => onChange('care', draft.care.filter((_, i) => i !== index))}
+                onClick={() =>
+                  onChange(
+                    'care',
+                    (draft.care ?? []).filter((_, i) => i !== index),
+                  )
+                }
                 className="shrink-0 rounded-lg px-2 text-[0.8rem] text-muted hover:text-burgundy"
               >
                 Remove
               </button>
             </div>
           ))}
-          {draft.care.length === 0 ? (
+          {(draft.care ?? []).length === 0 ? (
             <p className="text-[0.8rem] text-muted">No care lines yet.</p>
           ) : null}
         </div>
@@ -366,41 +401,111 @@ function VisibilityPanel({
   draft: Product
   onChange: <K extends keyof Product>(key: K, value: Product[K]) => void
 }) {
-  const tagsText = draft.tags.join(', ')
+  const tagsText = (draft.tags ?? []).join(', ')
+  const outOfStock = isProductOutOfStock(draft)
+  const hasVariants = (draft.variants ?? []).length > 0
+
+  function handleOutOfStockChange(checked: boolean) {
+    if (!hasVariants) return
+    onChange(
+      'variants',
+      checked
+        ? markProductOutOfStock(draft.variants)
+        : markProductInStock(draft.variants),
+    )
+  }
 
   return (
-    <div className="max-w-xl space-y-5">
-      <h2 className="text-[1.05rem] font-semibold text-admin-ink">Visibility</h2>
+    <div className="max-w-xl space-y-6">
+      <div>
+        <h2 className="text-[1.05rem] font-semibold text-admin-ink">Visibility</h2>
+        <p className="mt-1 text-[0.82rem] text-muted">
+          Controls how this product appears in the shop. Nothing here permanently
+          deletes data — turn flags back on anytime.
+        </p>
+      </div>
 
-      <label className="flex cursor-pointer items-center gap-2.5">
-        <input
-          type="checkbox"
-          checked={draft.isActive}
-          onChange={(e) => onChange('isActive', e.target.checked)}
-          className="h-4 w-4 accent-burgundy"
-        />
-        <span className="text-[0.9rem] text-admin-ink">Active on storefront</span>
-      </label>
+      <section className="space-y-3 rounded-xl border border-border/60 bg-admin-bg/40 p-4">
+        <p className="text-[0.68rem] font-medium tracking-[0.12em] text-muted-light uppercase">
+          Availability
+        </p>
 
-      <label className="flex cursor-pointer items-center gap-2.5">
-        <input
-          type="checkbox"
-          checked={draft.featured}
-          onChange={(e) => onChange('featured', e.target.checked)}
-          className="h-4 w-4 accent-burgundy"
-        />
-        <span className="text-[0.9rem] text-admin-ink">Featured</span>
-      </label>
+        <label className="flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={draft.isActive}
+            onChange={(e) => onChange('isActive', e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-burgundy"
+          />
+          <span>
+            <span className="block text-[0.9rem] text-admin-ink">Active on storefront</span>
+            <span className="mt-0.5 block text-[0.75rem] text-muted-light">
+              When off, the product is hidden from the shop but kept in admin
+              (same idea as inactive categories). Uncheck to soft-hide; check again
+              to publish.
+            </span>
+          </span>
+        </label>
 
-      <label className="flex cursor-pointer items-center gap-2.5">
-        <input
-          type="checkbox"
-          checked={draft.isNew}
-          onChange={(e) => onChange('isNew', e.target.checked)}
-          className="h-4 w-4 accent-burgundy"
-        />
-        <span className="text-[0.9rem] text-admin-ink">Mark as new</span>
-      </label>
+        <label
+          className={[
+            'flex items-start gap-2.5',
+            hasVariants ? 'cursor-pointer' : 'cursor-not-allowed opacity-60',
+          ].join(' ')}
+        >
+          <input
+            type="checkbox"
+            checked={outOfStock}
+            disabled={!hasVariants}
+            onChange={(e) => handleOutOfStockChange(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-burgundy"
+          />
+          <span>
+            <span className="block text-[0.9rem] text-admin-ink">Out of stock</span>
+            <span className="mt-0.5 block text-[0.75rem] text-muted-light">
+              {hasVariants
+                ? 'Sets all variant stock to 0 so the shop shows “Out of stock”. Previous stock is remembered and restored when you uncheck. Product stays in the API.'
+                : 'Add at least one variant first (Variants tab).'}
+            </span>
+          </span>
+        </label>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-border/60 bg-admin-bg/40 p-4">
+        <p className="text-[0.68rem] font-medium tracking-[0.12em] text-muted-light uppercase">
+          Merchandising
+        </p>
+
+        <label className="flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={draft.featured}
+            onChange={(e) => onChange('featured', e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-burgundy"
+          />
+          <span>
+            <span className="block text-[0.9rem] text-admin-ink">Featured</span>
+            <span className="mt-0.5 block text-[0.75rem] text-muted-light">
+              Highlights the product in featured / bestseller areas on the storefront.
+            </span>
+          </span>
+        </label>
+
+        <label className="flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={draft.isNew}
+            onChange={(e) => onChange('isNew', e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-burgundy"
+          />
+          <span>
+            <span className="block text-[0.9rem] text-admin-ink">Mark as new</span>
+            <span className="mt-0.5 block text-[0.75rem] text-muted-light">
+              Shows it in “new arrivals” and can display a New badge.
+            </span>
+          </span>
+        </label>
+      </section>
 
       <label className="flex flex-col gap-1.5">
         <span className={labelClass}>Tags</span>
@@ -418,7 +523,9 @@ function VisibilityPanel({
           }
           placeholder="ready-to-dispatch, bestseller"
         />
-        <span className="text-[0.75rem] text-muted-light">Comma-separated</span>
+        <span className="text-[0.75rem] text-muted-light">
+          Comma-separated labels used for filters (e.g. ready-to-dispatch).
+        </span>
       </label>
     </div>
   )
@@ -440,11 +547,11 @@ export function ProductEditPage() {
       setError('')
       try {
         const [item, cats] = await Promise.all([
-          fetchProductBySlug(slug),
-          fetchCategories(),
+          fetchProductBySlug(slug, { includeInactive: true }),
+          fetchCategories({ includeInactive: true }),
         ])
         if (cancelled) return
-        setProduct(item)
+        setProduct(normalizeProduct(item))
         setCategories(cats)
       } catch (err) {
         if (!cancelled) {
@@ -499,7 +606,7 @@ export function ProductCreatePage() {
     let cancelled = false
     async function load() {
       try {
-        const cats = await fetchCategories()
+        const cats = await fetchCategories({ includeInactive: true })
         if (cancelled) return
         setCategories(cats)
         const base = emptyProduct()

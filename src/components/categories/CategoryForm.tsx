@@ -212,17 +212,26 @@ export function CategoryForm({ mode, initial }: CategoryFormProps) {
                 onChange={(e) => setSortOrder(e.target.value)}
                 className={fieldClass}
               />
+              <span className="text-[0.75rem] text-muted-light">
+                Lower numbers appear first on the storefront. Duplicates are allowed —
+                those categories sit next to each other (no unique constraint).
+              </span>
             </label>
           </div>
 
-          <label className="flex cursor-pointer items-center gap-2.5 pt-1">
+          <label className="flex cursor-pointer items-start gap-2.5 pt-1">
             <input
               type="checkbox"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="h-4 w-4 accent-burgundy"
+              className="mt-0.5 h-4 w-4 accent-burgundy"
             />
-            <span className="text-[0.9rem] text-admin-ink">Active on storefront</span>
+            <span>
+              <span className="block text-[0.9rem] text-admin-ink">Active on storefront</span>
+              <span className="mt-0.5 block text-[0.75rem] text-muted-light">
+                When off, the category is hidden from the public shop but kept in admin.
+              </span>
+            </span>
           </label>
 
           {error ? (

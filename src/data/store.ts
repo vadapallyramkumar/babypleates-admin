@@ -17,6 +17,10 @@ export {
   getProductListStatus,
   getProductSizeCount,
   getProductTotalStock,
+  isProductOutOfStock,
+  markProductInStock,
+  markProductOutOfStock,
+  normalizeProduct,
   products,
 } from './products'
 

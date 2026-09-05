@@ -12,8 +12,16 @@ export type CategoryPayload = {
   filter?: string
 }
 
-export async function fetchCategories(): Promise<Category[]> {
-  const payload = await apiRequest<unknown>('/v1/categories')
+export async function fetchCategories(options?: {
+  includeInactive?: boolean
+}): Promise<Category[]> {
+  const query = new URLSearchParams()
+  if (options?.includeInactive) {
+    query.set('includeInactive', 'true')
+  }
+  const qs = query.toString()
+  const path = qs ? `/v1/categories?${qs}` : '/v1/categories'
+  const payload = await apiRequest<unknown>(path)
   const data = unwrapData<Category[]>(payload)
   return [...data].sort((a, b) => a.sortOrder - b.sortOrder)
 }

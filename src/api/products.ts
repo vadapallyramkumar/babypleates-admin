@@ -14,6 +14,7 @@ type ProductsListResponse = {
 export async function fetchProducts(params?: {
   page?: number
   limit?: number
+  includeInactive?: boolean
 }): Promise<{ products: Product[]; total: number }> {
   const page = params?.page ?? 1
   const limit = params?.limit ?? 100
@@ -21,6 +22,9 @@ export async function fetchProducts(params?: {
     page: String(page),
     limit: String(limit),
   })
+  if (params?.includeInactive) {
+    query.set('includeInactive', 'true')
+  }
   const payload = await apiRequest<ProductsListResponse | { data: Product[] }>(
     `/v1/products?${query.toString()}`,
   )
@@ -37,8 +41,17 @@ export async function fetchProducts(params?: {
   return { products: data, total: data.length }
 }
 
-export async function fetchProductBySlug(slug: string): Promise<Product> {
-  const payload = await apiRequest<unknown>(`/v1/products/${encodeURIComponent(slug)}`)
+export async function fetchProductBySlug(
+  slug: string,
+  options?: { includeInactive?: boolean },
+): Promise<Product> {
+  const query = new URLSearchParams()
+  if (options?.includeInactive) {
+    query.set('includeInactive', 'true')
+  }
+  const qs = query.toString()
+  const path = `/v1/products/${encodeURIComponent(slug)}${qs ? `?${qs}` : ''}`
+  const payload = await apiRequest<unknown>(path)
   return unwrapData<Product>(payload)
 }
 

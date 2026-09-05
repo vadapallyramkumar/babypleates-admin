@@ -1,12 +1,18 @@
 import type { ReactNode } from 'react'
 
 export function StatusBadge({ status }: { status: string }) {
-  const isLow = status.toLowerCase().includes('low')
-  return (
-    <span className={isLow ? 'font-medium text-warning' : 'font-medium text-success'}>
-      {status}
-    </span>
-  )
+  const lower = status.toLowerCase()
+  const isLow = lower.includes('low')
+  const isInactive = lower.includes('inactive')
+  const isOut = lower.includes('out of stock')
+  const tone = isInactive
+    ? 'font-medium text-muted'
+    : isOut
+      ? 'font-medium text-warning'
+      : isLow
+        ? 'font-medium text-warning'
+        : 'font-medium text-success'
+  return <span className={tone}>{status}</span>
 }
 
 export function StatCard({

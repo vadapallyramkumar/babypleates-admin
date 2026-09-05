@@ -19,9 +19,9 @@ export function CategoryEditPage() {
       setLoading(true)
       setError('')
       try {
-        const list = await fetchCategories()
+        const list = await fetchCategories({ includeInactive: true })
         if (cancelled) return
-        const found = list.find((c) => c.id === id) ?? null
+        const found = list.find((c) => c.id === id || c.slug === id) ?? null
         setCategory(found)
         setMissing(!found)
       } catch (err) {
