@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { deleteMediaImage, fetchMediaAssets, type MediaAsset } from '../api/media'
 import { PageHeader } from '../components/admin/ui'
 import { IconCheck, IconCopy, IconImage, IconPlus, IconTrash } from '../components/icons'
+import { NoticeBanner } from '../components/NoticeBanner'
+import { useNotice } from '../hooks/useNotice'
 import { mediaThumbUrl } from '../lib/mediaUrl'
 
 type ViewMode = 'grid' | 'list'
@@ -103,6 +105,9 @@ function MediaThumb({
 }
 
 export function MediaPage() {
+  const { notice, showSuccess, showError, dismiss } = useNotice({
+    consumeLocationState: true,
+  })
   const [assets, setAssets] = useState<MediaAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -110,32 +115,30 @@ export function MediaPage() {
   const [page, setPage] = useState(1)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
+  async function load(opts?: { silent?: boolean }) {
+    if (!opts?.silent) {
       setLoading(true)
       setError('')
-      try {
-        const data = await fetchMediaAssets()
-        if (!cancelled) {
-          setAssets(data)
-          setPage(1)
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load media.')
-          setAssets([])
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
+    }
+    try {
+      const data = await fetchMediaAssets()
+      setAssets(data)
+      if (!opts?.silent) setPage(1)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load media.'
+      if (opts?.silent) {
+        showError(message)
+      } else {
+        setError(message)
+        setAssets([])
       }
+    } finally {
+      if (!opts?.silent) setLoading(false)
     }
+  }
 
+  useEffect(() => {
     void load()
-    return () => {
-      cancelled = true
-    }
   }, [])
 
   const pageCount = Math.max(1, Math.ceil(assets.length / PAGE_SIZE))
@@ -158,20 +161,19 @@ export function MediaPage() {
     }
 
     setDeletingId(asset.publicId)
-    setError('')
-
     try {
       await deleteMediaImage(asset.publicId)
-      setAssets((current) => current.filter((a) => a.publicId !== asset.publicId))
+      showSuccess(`“${label}” deleted.`)
+      await load({ silent: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete image.')
+      showError(err instanceof Error ? err.message : 'Failed to delete image.')
     } finally {
       setDeletingId(null)
     }
   }
 
   return (
-    <div className="animate-fade-up px-8 py-8 lg:px-10">
+    <div className="px-8 py-8 lg:px-10">
       <PageHeader
         title="Media"
         subtitle={
@@ -219,6 +221,8 @@ export function MediaPage() {
           </div>
         }
       />
+
+      {notice ? <NoticeBanner notice={notice} onDismiss={dismiss} /> : null}
 
       {error ? (
         <p className="mt-6 text-[0.9rem] text-burgundy-soft" role="alert">

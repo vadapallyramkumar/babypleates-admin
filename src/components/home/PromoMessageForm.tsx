@@ -8,6 +8,7 @@ import {
 } from '../../api/home'
 import type { PromotionalMessage } from '../../data/home'
 import { ApiError } from '../../lib/api'
+import { noticeLocationState } from '../NoticeBanner'
 import { homeFieldClass, homeLabelClass, homeSectionPath } from './homeUi'
 
 type PromoMessageFormProps = {
@@ -60,7 +61,15 @@ export function PromoMessageForm({ mode, initial }: PromoMessageFormProps) {
       } else {
         await createPromotionalMessage(payload)
       }
-      navigate(backTo, { replace: true })
+      navigate(
+        backTo,
+        {
+          replace: true,
+          state: noticeLocationState(
+            isEdit ? 'Promo message updated.' : 'Promo message created.',
+          ),
+        },
+      )
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : 'Failed to save promotional message.',

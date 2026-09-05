@@ -11,12 +11,14 @@ import {
 import { PageHeader } from '../components/admin/ui'
 import { parseHomeTab, type HomeSection } from '../components/home/homeUi'
 import { IconPencil, IconPlus, IconTrash } from '../components/icons'
+import { NoticeBanner } from '../components/NoticeBanner'
 import {
   socialMediaTypeLabel,
   type HeroImage,
   type PromotionalMessage,
   type SocialLink,
 } from '../data/home'
+import { useNotice } from '../hooks/useNotice'
 import { ApiError } from '../lib/api'
 import { mediaThumbUrl } from '../lib/mediaUrl'
 
@@ -31,6 +33,9 @@ const TABS: { id: HomeSection; label: string }[] = [
 export function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = parseHomeTab(searchParams.get('tab'))
+  const { notice, showSuccess, showError, dismiss } = useNotice({
+    consumeLocationState: true,
+  })
 
   const [heroes, setHeroes] = useState<HeroImage[]>([])
   const [promos, setPromos] = useState<PromotionalMessage[]>([])
@@ -40,9 +45,11 @@ export function HomePage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [filter, setFilter] = useState<VisibilityFilter>('all')
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError('')
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setLoading(true)
+      setError('')
+    }
     try {
       const [h, p, s] = await Promise.all([
         fetchHeroImages({ includeInactive: true }),
@@ -53,14 +60,20 @@ export function HomePage() {
       setPromos(p)
       setTrending(s)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load home content.')
-      setHeroes([])
-      setPromos([])
-      setTrending([])
+      const message =
+        err instanceof ApiError ? err.message : 'Failed to load home content.'
+      if (opts?.silent) {
+        showError(message)
+      } else {
+        setError(message)
+        setHeroes([])
+        setPromos([])
+        setTrending([])
+      }
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
-  }, [])
+  }, [showError])
 
   useEffect(() => {
     void load()
@@ -101,29 +114,31 @@ export function HomePage() {
     )
     if (!ok) return
     setDeletingId(item.id)
-    setError('')
     try {
       await deleteHeroImage(item.id)
-      setHeroes((prev) => prev.filter((h) => h.id !== item.id))
+      showSuccess(`Hero “${item.alt}” deleted.`)
+      await load({ silent: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to delete hero image.')
+      showError(err instanceof ApiError ? err.message : 'Failed to delete hero image.')
     } finally {
       setDeletingId(null)
     }
   }
 
   async function handleDeletePromo(item: PromotionalMessage) {
+    const preview =
+      item.message.slice(0, 60) + (item.message.length > 60 ? '…' : '')
     const ok = window.confirm(
-      `Permanently delete “${item.message.slice(0, 60)}${item.message.length > 60 ? '…' : ''}”? This cannot be undone.`,
+      `Permanently delete “${preview}”? This cannot be undone.`,
     )
     if (!ok) return
     setDeletingId(item.id)
-    setError('')
     try {
       await deletePromotionalMessage(item.id)
-      setPromos((prev) => prev.filter((p) => p.id !== item.id))
+      showSuccess('Promo message deleted.')
+      await load({ silent: true })
     } catch (err) {
-      setError(
+      showError(
         err instanceof ApiError ? err.message : 'Failed to delete promotional message.',
       )
     } finally {
@@ -137,12 +152,12 @@ export function HomePage() {
     )
     if (!ok) return
     setDeletingId(item.id)
-    setError('')
     try {
       await deleteSocialLink(item.id)
-      setTrending((prev) => prev.filter((s) => s.id !== item.id))
+      showSuccess('Trending item deleted.')
+      await load({ silent: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to delete trending item.')
+      showError(err instanceof ApiError ? err.message : 'Failed to delete trending item.')
     } finally {
       setDeletingId(null)
     }
@@ -165,7 +180,7 @@ export function HomePage() {
   const visibleTrending = trending.filter((s) => matchesFilter(s.active))
 
   return (
-    <div className="animate-fade-up px-8 py-8 lg:px-10">
+    <div className="px-8 py-8 lg:px-10">
       <PageHeader
         title="Home"
         subtitle={
@@ -183,6 +198,8 @@ export function HomePage() {
           </Link>
         }
       />
+
+      {notice ? <NoticeBanner notice={notice} onDismiss={dismiss} /> : null}
 
       <div className="mt-6 flex flex-wrap gap-2 border-b border-border/50 pb-px">
         {TABS.map((item) => (

@@ -3,28 +3,40 @@ import { Link } from 'react-router-dom'
 import { deleteCategory, fetchCategories } from '../api/categories'
 import { PageHeader } from '../components/admin/ui'
 import { IconPencil, IconPlus, IconTrash } from '../components/icons'
+import { NoticeBanner } from '../components/NoticeBanner'
 import type { Category } from '../data/store'
+import { useNotice } from '../hooks/useNotice'
 import { ApiError } from '../lib/api'
 
 type VisibilityFilter = 'all' | 'active' | 'inactive'
 
 export function CategoriesPage() {
+  const { notice, showSuccess, showError, dismiss } = useNotice({
+    consumeLocationState: true,
+  })
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [filter, setFilter] = useState<VisibilityFilter>('all')
 
-  async function load() {
-    setLoading(true)
-    setError('')
+  async function load(opts?: { silent?: boolean }) {
+    if (!opts?.silent) {
+      setLoading(true)
+      setError('')
+    }
     try {
       setCategories(await fetchCategories({ includeInactive: true }))
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load categories.')
-      setCategories([])
+      const message = err instanceof ApiError ? err.message : 'Failed to load categories.'
+      if (opts?.silent) {
+        showError(message)
+      } else {
+        setError(message)
+        setCategories([])
+      }
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }
 
@@ -33,22 +45,16 @@ export function CategoriesPage() {
   }, [])
 
   async function handleDelete(category: Category) {
-    const ok = window.confirm(
-      category.isActive
-        ? `Deactivate “${category.name}”? It will be hidden from the storefront but stay in admin as inactive.`
-        : `“${category.name}” is already inactive. Soft-delete again?`,
-    )
+    const ok = window.confirm(`Delete “${category.name}”? This cannot be undone.`)
     if (!ok) return
     setDeletingId(category.id)
-    setError('')
     try {
       await deleteCategory(category.id)
-      setCategories((prev) =>
-        prev.map((c) => (c.id === category.id ? { ...c, isActive: false } : c)),
-      )
+      showSuccess(`“${category.name}” deleted.`)
       if (filter === 'active') setFilter('inactive')
+      await load({ silent: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to delete category.')
+      showError(err instanceof ApiError ? err.message : 'Failed to delete category.')
     } finally {
       setDeletingId(null)
     }
@@ -70,7 +76,7 @@ export function CategoriesPage() {
   ]
 
   return (
-    <div className="animate-fade-up px-8 py-8 lg:px-10">
+    <div className="px-8 py-8 lg:px-10">
       <PageHeader
         title="Categories"
         subtitle={
@@ -88,6 +94,8 @@ export function CategoriesPage() {
           </Link>
         }
       />
+
+      {notice ? <NoticeBanner notice={notice} onDismiss={dismiss} /> : null}
 
       {error ? (
         <p className="mt-4 text-[0.9rem] text-burgundy-soft" role="alert">
@@ -174,13 +182,9 @@ export function CategoriesPage() {
               </Link>
               <button
                 type="button"
-                title={category.isActive ? 'Deactivate category' : 'Already inactive'}
-                aria-label={
-                  category.isActive
-                    ? `Deactivate ${category.name}`
-                    : `${category.name} is inactive`
-                }
-                disabled={deletingId === category.id || !category.isActive}
+                title="Delete category"
+                aria-label={`Delete ${category.name}`}
+                disabled={deletingId === category.id}
                 onClick={() => void handleDelete(category)}
                 className="inline-flex items-center justify-center rounded-md p-1.5 text-muted transition hover:bg-attention-bg hover:text-burgundy disabled:opacity-40"
               >

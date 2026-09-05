@@ -19,6 +19,7 @@ import {
 } from '../data/store'
 import { ApiError } from '../lib/api'
 import { slugify } from '../lib/slug'
+import { noticeLocationState } from '../components/NoticeBanner'
 
 const tabs = [
   { id: 'details', label: 'Details' },
@@ -139,7 +140,12 @@ function ProductEditor({ mode, initial, categories }: ProductEditorProps) {
       } else {
         await updateProduct(payload.id, payload)
       }
-      navigate('/products', { replace: true })
+      navigate('/products', {
+        replace: true,
+        state: noticeLocationState(
+          mode === 'create' ? 'Product created.' : 'Product updated.',
+        ),
+      })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save product.')
     } finally {

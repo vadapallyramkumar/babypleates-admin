@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { uploadMediaImage } from '../api/media'
+import { noticeLocationState } from '../components/NoticeBanner'
 import { apiWriteKeyError } from '../lib/api'
 
 const fieldClass =
@@ -50,7 +51,10 @@ export function MediaUploadPage() {
 
     try {
       await uploadMediaImage(file, alt)
-      navigate('/media', { replace: true })
+      navigate('/media', {
+        replace: true,
+        state: noticeLocationState('Media uploaded.'),
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed.')
     } finally {

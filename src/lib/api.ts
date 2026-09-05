@@ -51,9 +51,23 @@ export function apiWriteKeyError(): string | null {
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
-  const text = await response.text()
-  let parsed: unknown = null
-  if (text) {
+  // DELETE/PUT soft-deletes often return 204/205 with an empty body.
+  if (response.status === 204 || response.status === 205) {
+    if (!response.ok) {
+      throw new ApiError(`Request failed (${response.status})`, response.status, null)
+    }
+    return undefined as T
+  }
+
+  let text = ''
+  try {
+    text = await response.text()
+  } catch {
+    text = ''
+  }
+
+  let parsed: unknown = undefined
+  if (text.trim()) {
     try {
       parsed = JSON.parse(text) as unknown
     } catch {
@@ -65,6 +79,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
     throw new ApiError(messageFromBody(parsed, response.status), response.status, parsed)
   }
 
+  // Successful responses with no body (e.g. DELETE 200) are still success.
   return parsed as T
 }
 

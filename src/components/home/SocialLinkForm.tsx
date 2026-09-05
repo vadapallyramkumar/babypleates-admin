@@ -16,6 +16,7 @@ import { ApiError } from '../../lib/api'
 import { mediaThumbUrl } from '../../lib/mediaUrl'
 import { IconImage } from '../icons'
 import { MediaPickerModal } from '../media/MediaPickerModal'
+import { noticeLocationState } from '../NoticeBanner'
 import { homeFieldClass, homeLabelClass, homeSectionPath } from './homeUi'
 
 type SocialLinkFormProps = {
@@ -70,7 +71,15 @@ export function SocialLinkForm({ mode, initial }: SocialLinkFormProps) {
       } else {
         await createSocialLink(payload)
       }
-      navigate(backTo, { replace: true })
+      navigate(
+        backTo,
+        {
+          replace: true,
+          state: noticeLocationState(
+            isEdit ? 'Trending item updated.' : 'Trending item created.',
+          ),
+        },
+      )
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save trending item.')
     } finally {

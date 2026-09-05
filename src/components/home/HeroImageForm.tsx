@@ -11,6 +11,7 @@ import { ApiError } from '../../lib/api'
 import { mediaThumbUrl } from '../../lib/mediaUrl'
 import { IconImage } from '../icons'
 import { MediaPickerModal } from '../media/MediaPickerModal'
+import { noticeLocationState } from '../NoticeBanner'
 import { homeFieldClass, homeLabelClass, homeSectionPath } from './homeUi'
 
 type PickerTarget = 'desktop' | 'mobile' | null
@@ -126,7 +127,15 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
       } else {
         await createHeroImage(payload)
       }
-      navigate(backTo, { replace: true })
+      navigate(
+        backTo,
+        {
+          replace: true,
+          state: noticeLocationState(
+            isEdit ? 'Hero image updated.' : 'Hero image created.',
+          ),
+        },
+      )
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save hero image.')
     } finally {

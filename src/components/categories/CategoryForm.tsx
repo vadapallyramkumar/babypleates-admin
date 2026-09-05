@@ -8,6 +8,7 @@ import { mediaThumbUrl } from '../../lib/mediaUrl'
 import { slugify } from '../../lib/slug'
 import { IconImage } from '../icons'
 import { MediaPickerModal } from '../media/MediaPickerModal'
+import { noticeLocationState } from '../NoticeBanner'
 
 const fieldClass =
   'w-full rounded-lg border border-border bg-white px-3 py-2.5 text-[0.9rem] text-admin-ink outline-none transition placeholder:text-muted-light focus:border-burgundy/40 focus:ring-2 focus:ring-burgundy/15'
@@ -77,7 +78,12 @@ export function CategoryForm({ mode, initial }: CategoryFormProps) {
       } else {
         await createCategory(payload)
       }
-      navigate('/categories', { replace: true })
+      navigate('/categories', {
+        replace: true,
+        state: noticeLocationState(
+          isEdit ? 'Category updated.' : 'Category created.',
+        ),
+      })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save category.')
     } finally {

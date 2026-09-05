@@ -4,6 +4,7 @@ import { fetchCategories } from '../api/categories'
 import { deleteProduct, fetchProducts } from '../api/products'
 import { PageHeader, StatusBadge } from '../components/admin/ui'
 import { IconChevronDown, IconPlus, IconSearch, IconTrash } from '../components/icons'
+import { NoticeBanner } from '../components/NoticeBanner'
 import {
   formatINR,
   getCategoryName,
@@ -15,9 +16,13 @@ import {
   type Product,
   type ProductListStatus,
 } from '../data/store'
+import { useNotice } from '../hooks/useNotice'
 import { ApiError } from '../lib/api'
 
 export function ProductsPage() {
+  const { notice, showSuccess, showError, dismiss } = useNotice({
+    consumeLocationState: true,
+  })
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,21 +32,28 @@ export function ProductsPage() {
   const [category, setCategory] = useState('all')
   const [status, setStatus] = useState<'all' | ProductListStatus>('all')
 
-  async function load() {
-    setLoading(true)
-    setError('')
+  async function load(opts?: { silent?: boolean }) {
+    if (!opts?.silent) {
+      setLoading(true)
+      setError('')
+    }
     try {
       const [{ products: list }, cats] = await Promise.all([
-          fetchProducts({ page: 1, limit: 100, includeInactive: true }),
-          fetchCategories({ includeInactive: true }),
-        ])
+        fetchProducts({ page: 1, limit: 100, includeInactive: true }),
+        fetchCategories({ includeInactive: true }),
+      ])
       setProducts(list)
       setCategories(cats)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load products.')
-      setProducts([])
+      const message = err instanceof ApiError ? err.message : 'Failed to load products.'
+      if (opts?.silent) {
+        showError(message)
+      } else {
+        setError(message)
+        setProducts([])
+      }
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }
 
@@ -75,22 +87,15 @@ export function ProductsPage() {
   }, [products, categories, query, category, status])
 
   async function handleDelete(product: Product) {
-    const ok = window.confirm(
-      product.isActive
-        ? `Deactivate “${product.name}”? It will be hidden from the storefront but stay in admin as inactive.`
-        : `“${product.name}” is already inactive.`,
-    )
-    if (!ok || !product.isActive) return
+    const ok = window.confirm(`Delete “${product.name}”? This cannot be undone.`)
+    if (!ok) return
     setDeletingId(product.id)
-    setError('')
     try {
       await deleteProduct(product.id)
-      setProducts((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, isActive: false } : p)),
-      )
-      if (status === 'Active') setStatus('Inactive')
+      showSuccess(`“${product.name}” deleted.`)
+      await load({ silent: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to delete product.')
+      showError(err instanceof ApiError ? err.message : 'Failed to delete product.')
     } finally {
       setDeletingId(null)
     }
@@ -100,7 +105,7 @@ export function ProductsPage() {
   const inactiveCount = products.length - activeCount
 
   return (
-    <div className="animate-fade-up px-8 py-8 lg:px-10">
+    <div className="px-8 py-8 lg:px-10">
       <PageHeader
         title="Products"
         subtitle={
@@ -118,6 +123,8 @@ export function ProductsPage() {
           </Link>
         }
       />
+
+      {notice ? <NoticeBanner notice={notice} onDismiss={dismiss} /> : null}
 
       {error ? (
         <p className="mt-4 text-[0.9rem] text-burgundy-soft" role="alert">
@@ -226,13 +233,9 @@ export function ProductsPage() {
                   </Link>
                   <button
                     type="button"
-                    title={product.isActive ? 'Deactivate product' : 'Already inactive'}
-                    aria-label={
-                      product.isActive
-                        ? `Deactivate ${product.name}`
-                        : `${product.name} is inactive`
-                    }
-                    disabled={deletingId === product.id || !product.isActive}
+                    title="Delete product"
+                    aria-label={`Delete ${product.name}`}
+                    disabled={deletingId === product.id}
                     onClick={() => void handleDelete(product)}
                     className="inline-flex items-center justify-center rounded-xl border border-border/50 bg-card px-3 text-muted shadow-sm transition hover:bg-attention-bg hover:text-burgundy disabled:opacity-40"
                   >
