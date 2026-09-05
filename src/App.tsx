@@ -4,6 +4,9 @@ import { AdminLayout } from './layouts/AdminLayout'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { CategoryCreatePage } from './pages/CategoryCreatePage'
 import { CategoryEditPage } from './pages/CategoryEditPage'
+import { HeroImageCreatePage } from './pages/HeroImageCreatePage'
+import { HeroImageEditPage } from './pages/HeroImageEditPage'
+import { HomePage } from './pages/HomePage'
 import { InventoryPage } from './pages/InventoryPage'
 import { LoginPage } from './pages/LoginPage'
 import { MediaPage } from './pages/MediaPage'
@@ -11,6 +14,10 @@ import { MediaUploadPage } from './pages/MediaUploadPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ProductCreatePage, ProductEditPage } from './pages/ProductEditPage'
 import { ProductsPage } from './pages/ProductsPage'
+import { PromoMessageCreatePage } from './pages/PromoMessageCreatePage'
+import { PromoMessageEditPage } from './pages/PromoMessageEditPage'
+import { SocialLinkCreatePage } from './pages/SocialLinkCreatePage'
+import { SocialLinkEditPage } from './pages/SocialLinkEditPage'
 
 export default function App() {
   const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -25,6 +32,19 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AdminLayout />}>
             <Route index element={<OverviewPage />} />
+            <Route path="home" element={<HomePage />} />
+            <Route path="home/hero-images/new" element={<HeroImageCreatePage />} />
+            <Route path="home/hero-images/:id/edit" element={<HeroImageEditPage />} />
+            <Route
+              path="home/promotional-messages/new"
+              element={<PromoMessageCreatePage />}
+            />
+            <Route
+              path="home/promotional-messages/:id/edit"
+              element={<PromoMessageEditPage />}
+            />
+            <Route path="home/social-links/new" element={<SocialLinkCreatePage />} />
+            <Route path="home/social-links/:id/edit" element={<SocialLinkEditPage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="products/new" element={<ProductCreatePage />} />
             <Route path="products/:id" element={<ProductEditPage />} />

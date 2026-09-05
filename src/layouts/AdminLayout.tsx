@@ -5,6 +5,7 @@ import { signOut } from '../lib/auth'
 
 const navItems = [
   { to: '/', label: 'Overview', end: true },
+  { to: '/home', label: 'Home' },
   { to: '/products', label: 'Products' },
   { to: '/categories', label: 'Categories' },
   // { to: '/inventory', label: 'Inventory' },

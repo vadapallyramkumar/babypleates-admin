@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { fetchCategories } from '../api/categories'
 import { fetchProducts } from '../api/products'
 import { PageHeader, StatCard, StatusBadge } from '../components/admin/ui'
-import { IconArrowUpRight, IconPlus } from '../components/icons'
+import { IconPlus } from '../components/icons'
 import {
   formatINR,
   getCategoryName,
@@ -101,20 +101,18 @@ export function OverviewPage() {
               Add product
             </Link>
             <Link
+              to="/home"
+              className="flex items-center justify-center gap-1.5 rounded-lg bg-admin-bg px-3 py-2.5 text-[0.88rem] font-medium text-admin-ink transition hover:bg-border/50"
+            >
+              Edit homepage
+            </Link>
+            <Link
               to="/categories/new"
               className="flex items-center justify-center gap-1.5 rounded-lg bg-admin-bg px-3 py-2.5 text-[0.88rem] font-medium text-admin-ink transition hover:bg-border/50"
             >
               <IconPlus className="h-4 w-4" />
               Add category
             </Link>
-            <a
-              href="#storefront"
-              onClick={(e) => e.preventDefault()}
-              className="flex items-center justify-center gap-1.5 rounded-lg bg-admin-bg px-3 py-2.5 text-[0.88rem] font-medium text-admin-ink transition hover:bg-border/50"
-            >
-              <IconArrowUpRight className="h-4 w-4" />
-              Open storefront
-            </a>
           </div>
         </aside>
 

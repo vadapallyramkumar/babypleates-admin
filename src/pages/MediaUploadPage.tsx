@@ -41,7 +41,7 @@ export function MediaUploadPage() {
       return
     }
     if (!file) {
-      setError('Choose an image to upload.')
+      setError('Choose an image or video to upload.')
       return
     }
 
@@ -71,7 +71,7 @@ export function MediaUploadPage() {
           Upload media
         </h1>
         <p className="mt-1 text-[0.88rem] text-muted">
-          Upload an image for products, categories, and collections
+          Upload an image or video for products, categories, and trending
         </p>
       </div>
 
@@ -95,7 +95,15 @@ export function MediaUploadPage() {
           <div>
             <span className={labelClass}>File</span>
             <label className="mt-1.5 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-admin-bg/50 px-4 py-10 transition hover:border-burgundy/30 hover:bg-accent-pink/40">
-              {previewUrl ? (
+              {previewUrl && file?.type.startsWith('video/') ? (
+                <video
+                  src={previewUrl}
+                  muted
+                  playsInline
+                  controls
+                  className="max-h-48 rounded-lg object-contain"
+                />
+              ) : previewUrl ? (
                 <img
                   src={previewUrl}
                   alt=""
@@ -103,14 +111,14 @@ export function MediaUploadPage() {
                 />
               ) : null}
               <span className="text-[0.9rem] font-medium text-admin-ink">
-                {file?.name || 'Choose an image'}
+                {file?.name || 'Choose an image or video'}
               </span>
               <span className="text-[0.78rem] text-muted">
-                JPG, PNG, WebP, or GIF — max 8 MB
+                Images (JPG, PNG, WebP, GIF) or video (MP4, WebM)
               </span>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 className="sr-only"
                 onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
               />

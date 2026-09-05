@@ -4,16 +4,31 @@ import { fetchMediaAssets, type MediaAsset } from '../../api/media'
 import { mediaThumbUrl } from '../../lib/mediaUrl'
 import { IconCheck, IconClose, IconImage } from '../icons'
 
+type MediaAccept = 'image' | 'video' | 'all'
+
 type MediaPickerModalProps = {
   open: boolean
   selectedUrl?: string
+  /** Filter library assets by media kind. Defaults to images only. */
+  accept?: MediaAccept
+  /** Shown under the dialog title, e.g. hero size guidance */
+  hint?: string
   onClose: () => void
   onSelect: (url: string) => void
+}
+
+function matchesAccept(asset: MediaAsset, accept: MediaAccept): boolean {
+  const isVideo = asset.mimeType.startsWith('video/')
+  if (accept === 'all') return true
+  if (accept === 'video') return isVideo
+  return !isVideo
 }
 
 export function MediaPickerModal({
   open,
   selectedUrl = '',
+  accept = 'image',
+  hint,
   onClose,
   onSelect,
 }: MediaPickerModalProps) {
@@ -33,7 +48,7 @@ export function MediaPickerModal({
       try {
         const data = await fetchMediaAssets()
         if (!cancelled) {
-          setAssets(data.filter((asset) => !asset.mimeType.startsWith('video/')))
+          setAssets(data.filter((asset) => matchesAccept(asset, accept)))
         }
       } catch (err) {
         if (!cancelled) {
@@ -49,7 +64,7 @@ export function MediaPickerModal({
     return () => {
       cancelled = true
     }
-  }, [open])
+  }, [open, accept])
 
   useEffect(() => {
     if (!open) return
@@ -70,6 +85,10 @@ export function MediaPickerModal({
 
   if (!open) return null
 
+  const noun = accept === 'video' ? 'videos' : accept === 'all' ? 'media' : 'images'
+  const title =
+    accept === 'video' ? 'Choose video' : accept === 'all' ? 'Choose media' : 'Choose image'
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
       <button
@@ -88,10 +107,10 @@ export function MediaPickerModal({
         <div className="flex items-center justify-between gap-4 border-b border-border/70 px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <h2 id={titleId} className="text-[1.2rem] font-semibold text-admin-ink">
-              Choose image
+              {title}
             </h2>
             <p className="mt-1 text-[0.88rem] text-muted">
-              Pick an image from your media library
+              {hint ?? `Pick from your media library`}
             </p>
           </div>
           <button
@@ -123,15 +142,18 @@ export function MediaPickerModal({
           ) : assets.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-admin-bg/60 px-6 py-16 text-center">
               <IconImage className="mx-auto h-9 w-9 text-muted-light" />
-              <p className="mt-4 text-[1.05rem] font-semibold text-admin-ink">No images yet</p>
+              <p className="mt-4 text-[1.05rem] font-semibold text-admin-ink">
+                No {noun} yet
+              </p>
               <p className="mx-auto mt-2 max-w-sm text-[0.9rem] text-muted">
-                Upload media first, then return here to choose a category image.
+                Upload media first, then return here to choose.
               </p>
             </div>
           ) : (
             <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {assets.map((asset) => {
                 const selected = asset.url === selectedUrl
+                const isVideo = asset.mimeType.startsWith('video/')
                 return (
                   <li key={asset.publicId}>
                     <button
@@ -155,14 +177,29 @@ export function MediaPickerModal({
                         ].join(' ')}
                       >
                         <div className="aspect-[4/5]">
-                          <img
-                            src={mediaThumbUrl(asset.url, 480)}
-                            alt={asset.alt || asset.filename}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                          />
+                          {isVideo ? (
+                            <video
+                              src={asset.url}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <img
+                              src={mediaThumbUrl(asset.url, 480)}
+                              alt={asset.alt || asset.filename}
+                              loading="lazy"
+                              decoding="async"
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                            />
+                          )}
                         </div>
+                        {isVideo ? (
+                          <span className="absolute bottom-2.5 left-2.5 rounded-md bg-admin-ink/75 px-1.5 py-0.5 text-[0.65rem] font-medium tracking-wide text-white uppercase">
+                            Video
+                          </span>
+                        ) : null}
                         {selected ? (
                           <span className="absolute top-2.5 right-2.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-burgundy text-white shadow-md">
                             <IconCheck className="h-4 w-4" />
