@@ -64,7 +64,7 @@ export async function updateHeroImage(
 ): Promise<HeroImage> {
   const payload = await apiRequest<unknown>(
     `/v1/home/hero-images/${encodeURIComponent(id)}`,
-    { method: 'PATCH', body },
+    { method: 'PUT', body },
   )
   return unwrapData<HeroImage>(payload)
 }
@@ -109,7 +109,7 @@ export async function updatePromotionalMessage(
 ): Promise<PromotionalMessage> {
   const payload = await apiRequest<unknown>(
     `/v1/home/promotional-messages/${encodeURIComponent(id)}`,
-    { method: 'PATCH', body },
+    { method: 'PUT', body },
   )
   return unwrapData<PromotionalMessage>(payload)
 }
@@ -152,7 +152,7 @@ export async function updateSocialLink(
 ): Promise<SocialLink> {
   const payload = await apiRequest<unknown>(
     `/v1/home/social-links/${encodeURIComponent(id)}`,
-    { method: 'PATCH', body },
+    { method: 'PUT', body },
   )
   return unwrapData<SocialLink>(payload)
 }

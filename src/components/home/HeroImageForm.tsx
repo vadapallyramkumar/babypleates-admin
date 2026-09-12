@@ -19,6 +19,11 @@ type PickerTarget = 'desktop' | 'mobile' | null
 type ImageSize = { width: number; height: number }
 
 const DESKTOP_HERO_SIZE = { width: 1920, height: 600 } as const
+const MOBILE_HERO_SIZE = { width: 1080, height: 1350 } as const
+
+function formatSize(size: ImageSize): string {
+  return `${size.width} × ${size.height} px`
+}
 
 function loadImageSize(src: string): Promise<ImageSize> {
   return new Promise((resolve, reject) => {
@@ -46,7 +51,9 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
   const [active, setActive] = useState(initial?.active ?? true)
   const [error, setError] = useState('')
   const [sizeWarning, setSizeWarning] = useState('')
+  const [mobileSizeWarning, setMobileSizeWarning] = useState('')
   const [desktopSize, setDesktopSize] = useState<ImageSize | null>(null)
+  const [mobileSize, setMobileSize] = useState<ImageSize | null>(null)
   const [saving, setSaving] = useState(false)
   const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null)
 
@@ -67,7 +74,7 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
           size.height !== DESKTOP_HERO_SIZE.height
         ) {
           setSizeWarning(
-            `This image is ${size.width} × ${size.height} px. Desktop heroes should be ${DESKTOP_HERO_SIZE.width} × ${DESKTOP_HERO_SIZE.height} px.`,
+            `This image is ${formatSize(size)}. Desktop heroes should be ${formatSize(DESKTOP_HERO_SIZE)}.`,
           )
         } else {
           setSizeWarning('')
@@ -77,7 +84,7 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
         if (!cancelled) {
           setDesktopSize(null)
           setSizeWarning(
-            `Could not verify size. Please use a ${DESKTOP_HERO_SIZE.width} × ${DESKTOP_HERO_SIZE.height} px image.`,
+            `Could not verify size. Please use a ${formatSize(DESKTOP_HERO_SIZE)} image.`,
           )
         }
       })
@@ -86,6 +93,43 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
       cancelled = true
     }
   }, [url])
+
+  useEffect(() => {
+    if (!mobileUrl) {
+      setMobileSize(null)
+      setMobileSizeWarning('')
+      return
+    }
+
+    let cancelled = false
+    void loadImageSize(mobileUrl)
+      .then((size) => {
+        if (cancelled) return
+        setMobileSize(size)
+        if (
+          size.width !== MOBILE_HERO_SIZE.width ||
+          size.height !== MOBILE_HERO_SIZE.height
+        ) {
+          setMobileSizeWarning(
+            `This image is ${formatSize(size)}. Mobile heroes should be ${formatSize(MOBILE_HERO_SIZE)}.`,
+          )
+        } else {
+          setMobileSizeWarning('')
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMobileSize(null)
+          setMobileSizeWarning(
+            `Could not verify size. Please use a ${formatSize(MOBILE_HERO_SIZE)} image.`,
+          )
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [mobileUrl])
 
   function buildPayload(): HeroImagePayload | null {
     const trimmedAlt = alt.trim()
@@ -149,7 +193,7 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
     onPick,
     onClear,
     required,
-    sizeHint,
+    expectedSize,
     measuredSize,
     sizeWarningText,
   }: {
@@ -158,15 +202,16 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
     onPick: () => void
     onClear: () => void
     required?: boolean
-    sizeHint?: string
+    expectedSize?: ImageSize
     measuredSize?: ImageSize | null
     sizeWarningText?: string
   }) {
+    const sizeHint = expectedSize ? formatSize(expectedSize) : undefined
     const sizeOk =
       measuredSize &&
-      sizeHint &&
-      measuredSize.width === DESKTOP_HERO_SIZE.width &&
-      measuredSize.height === DESKTOP_HERO_SIZE.height
+      expectedSize &&
+      measuredSize.width === expectedSize.width &&
+      measuredSize.height === expectedSize.height
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -206,7 +251,7 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
                 </span>
                 <span className="mt-1 block text-[0.82rem] text-muted">
                   {measuredSize
-                    ? `${measuredSize.width} × ${measuredSize.height} px · click to change`
+                    ? `${formatSize(measuredSize)} · click to change`
                     : 'Click to choose a different image'}
                 </span>
               </span>
@@ -229,8 +274,10 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
             </>
           )}
         </button>
-        {sizeOk ? (
-          <span className="text-[0.75rem] text-success">Correct size (1920 × 600)</span>
+        {sizeOk && expectedSize ? (
+          <span className="text-[0.75rem] text-success">
+            Correct size ({expectedSize.width} × {expectedSize.height})
+          </span>
         ) : null}
         {sizeWarningText ? (
           <p className="text-[0.78rem] text-warning" role="status">
@@ -265,7 +312,7 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
         <p className="mt-1 text-[0.88rem] text-muted">
           {isEdit
             ? 'Update banner image, alt text, and visibility'
-            : 'Desktop banner should be 1920 × 600 px; mobile image is optional'}
+            : `Desktop ${formatSize(DESKTOP_HERO_SIZE)}; optional mobile ${formatSize(MOBILE_HERO_SIZE)}`}
         </p>
       </div>
 
@@ -285,7 +332,7 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
             label="Desktop image"
             value={url}
             required
-            sizeHint="1920 × 600 px"
+            expectedSize={DESKTOP_HERO_SIZE}
             measuredSize={desktopSize}
             sizeWarningText={sizeWarning}
             onPick={() => setPickerTarget('desktop')}
@@ -299,8 +346,15 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
           <ImagePickerButton
             label="Mobile image"
             value={mobileUrl}
+            expectedSize={MOBILE_HERO_SIZE}
+            measuredSize={mobileSize}
+            sizeWarningText={mobileSizeWarning}
             onPick={() => setPickerTarget('mobile')}
-            onClear={() => setMobileUrl('')}
+            onClear={() => {
+              setMobileUrl('')
+              setMobileSize(null)
+              setMobileSizeWarning('')
+            }}
           />
 
           <label className="flex flex-col gap-1.5">
@@ -374,8 +428,10 @@ export function HeroImageForm({ mode, initial }: HeroImageFormProps) {
         selectedUrl={pickerTarget === 'mobile' ? mobileUrl : url}
         hint={
           pickerTarget === 'desktop'
-            ? 'Desktop hero: use a 1920 × 600 px image'
-            : undefined
+            ? `Desktop hero: use a ${formatSize(DESKTOP_HERO_SIZE)} image`
+            : pickerTarget === 'mobile'
+              ? `Mobile hero: use a ${formatSize(MOBILE_HERO_SIZE)} image`
+              : undefined
         }
         onClose={() => setPickerTarget(null)}
         onSelect={(selected) => {
