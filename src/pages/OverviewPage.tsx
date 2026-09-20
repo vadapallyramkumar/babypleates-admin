@@ -113,7 +113,7 @@ export function OverviewPage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <StatCard
           label="Active products"
           value={loading || !data ? '—' : data.productsActive}
@@ -125,6 +125,12 @@ export function OverviewPage() {
           value={loading || !data ? '—' : data.lowStock}
           note={`At or below ${data?.lowStockThreshold ?? 3}`}
           noteTone="warning"
+        />
+        <StatCard
+          label="Discounts"
+          value={loading || !data ? '—' : formatINR(data.discountGiven ?? 0)}
+          note="Coupons this period"
+          noteTone="muted"
         />
       </div>
 

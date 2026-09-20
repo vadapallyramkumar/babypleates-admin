@@ -39,9 +39,14 @@ export type Order = {
   items: OrderItem[]
   totals: {
     subtotal: number
+    discount: number
     shipping: number
     total: number
     currency: string
+  }
+  coupon?: {
+    code: string
+    discount: number
   }
   payment: {
     method: PaymentMethod
@@ -76,6 +81,7 @@ export type SalesDashboard = {
   range: SalesRange
   from: string
   revenue: number
+  discountGiven?: number
   ordersCount: number
   averageOrderValue: number
   toShip: number

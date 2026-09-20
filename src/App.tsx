@@ -6,6 +6,9 @@ import { CategoryCreatePage } from './pages/CategoryCreatePage'
 import { CategoryEditPage } from './pages/CategoryEditPage'
 import { HeroImageCreatePage } from './pages/HeroImageCreatePage'
 import { HeroImageEditPage } from './pages/HeroImageEditPage'
+import { CouponCreatePage } from './pages/CouponCreatePage'
+import { CouponEditPage } from './pages/CouponEditPage'
+import { CouponsPage } from './pages/CouponsPage'
 import { HomePage } from './pages/HomePage'
 import { InventoryPage } from './pages/InventoryPage'
 import { LoginPage } from './pages/LoginPage'
@@ -36,6 +39,9 @@ export default function App() {
             <Route index element={<OverviewPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="orders/:id" element={<OrderDetailPage />} />
+            <Route path="coupons" element={<CouponsPage />} />
+            <Route path="coupons/new" element={<CouponCreatePage />} />
+            <Route path="coupons/:id/edit" element={<CouponEditPage />} />
             <Route path="home" element={<HomePage />} />
             <Route path="home/hero-images/new" element={<HeroImageCreatePage />} />
             <Route path="home/hero-images/:id/edit" element={<HeroImageEditPage />} />

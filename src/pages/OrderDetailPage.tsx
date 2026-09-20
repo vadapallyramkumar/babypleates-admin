@@ -135,6 +135,12 @@ export function OrderDetailPage() {
                   <dt>Subtotal</dt>
                   <dd>{formatINR(order.totals.subtotal)}</dd>
                 </div>
+                {order.totals.discount > 0 ? (
+                  <div className="flex justify-between text-muted">
+                    <dt>Discount{order.coupon?.code ? ` (${order.coupon.code})` : ''}</dt>
+                    <dd>−{formatINR(order.totals.discount)}</dd>
+                  </div>
+                ) : null}
                 <div className="flex justify-between text-muted">
                   <dt>Shipping</dt>
                   <dd>
