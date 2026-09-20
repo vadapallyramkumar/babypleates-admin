@@ -11,6 +11,8 @@ import { InventoryPage } from './pages/InventoryPage'
 import { LoginPage } from './pages/LoginPage'
 import { MediaPage } from './pages/MediaPage'
 import { MediaUploadPage } from './pages/MediaUploadPage'
+import { OrderDetailPage } from './pages/OrderDetailPage'
+import { OrdersPage } from './pages/OrdersPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ProductCreatePage, ProductEditPage } from './pages/ProductEditPage'
 import { ProductsPage } from './pages/ProductsPage'
@@ -32,6 +34,8 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AdminLayout />}>
             <Route index element={<OverviewPage />} />
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="orders/:id" element={<OrderDetailPage />} />
             <Route path="home" element={<HomePage />} />
             <Route path="home/hero-images/new" element={<HeroImageCreatePage />} />
             <Route path="home/hero-images/:id/edit" element={<HeroImageEditPage />} />

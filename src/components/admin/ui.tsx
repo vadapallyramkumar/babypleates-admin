@@ -24,21 +24,41 @@ export function StatCard({
   label: string
   value: string | number
   note: string
-  noteTone?: 'success' | 'warning'
+  noteTone?: 'success' | 'warning' | 'muted'
 }) {
+  const noteClass =
+    noteTone === 'warning'
+      ? 'text-warning'
+      : noteTone === 'muted'
+        ? 'text-muted'
+        : 'text-success'
   return (
     <div className="rounded-xl border border-border/60 bg-card px-5 py-4 shadow-sm">
       <p className="text-[0.8rem] text-muted">{label}</p>
       <p className="mt-1 text-[1.75rem] font-semibold tracking-tight text-admin-ink">{value}</p>
-      <p
-        className={`mt-1 text-[0.78rem] ${
-          noteTone === 'warning' ? 'text-warning' : 'text-success'
-        }`}
-      >
-        {note}
-      </p>
+      <p className={`mt-1 text-[0.78rem] ${noteClass}`}>{note}</p>
     </div>
   )
+}
+
+export function OrderStatusBadge({ status }: { status: string }) {
+  const tone =
+    status === 'cancelled' || status === 'pending_payment'
+      ? 'font-medium text-warning'
+      : status === 'delivered'
+        ? 'font-medium text-success'
+        : status === 'shipped' || status === 'confirmed'
+          ? 'font-medium text-sidebar-active'
+          : 'font-medium text-admin-ink'
+  const label: Record<string, string> = {
+    pending_payment: 'Awaiting payment',
+    new: 'New',
+    confirmed: 'Confirmed',
+    shipped: 'Shipped',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+  }
+  return <span className={tone}>{label[status] ?? status}</span>
 }
 
 export function PageHeader({
