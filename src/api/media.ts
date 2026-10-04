@@ -1,4 +1,5 @@
 import { apiRequest, apiUpload, unwrapData } from '../lib/api'
+import { prepareMediaFile } from '../lib/prepareMediaFile'
 
 export type MediaAsset = {
   publicId: string
@@ -93,13 +94,14 @@ export async function fetchMediaAssets(): Promise<MediaAsset[]> {
 
 /** Upload image via POST /v1/media/upload and save to the local library. */
 export async function uploadMediaImage(file: File, alt = ''): Promise<MediaAsset> {
+  const prepared = await prepareMediaFile(file)
   const formData = new FormData()
-  formData.append('file', file)
+  formData.append('file', prepared.file)
 
   const payload = await apiUpload<unknown>('/v1/media/upload', formData)
   const upload = unwrapData<MediaUploadResult>(payload)
 
-  const asset = toMediaAsset(upload, file, alt)
+  const asset = toMediaAsset(upload, prepared.file, alt)
   const next = [asset, ...readLocalAssets().filter((a) => a.publicId !== asset.publicId)]
   writeLocalAssets(next)
   return asset

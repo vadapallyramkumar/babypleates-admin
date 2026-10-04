@@ -1,9 +1,29 @@
 import { apiRequest, unwrapData } from '../lib/api'
-import type { Product } from '../data/products'
+import type { Product, ProductVariant } from '../data/products'
 
-export type ProductWritePayload = Omit<Product, 'createdAt' | 'updatedAt'> & {
-  createdAt?: string
-  updatedAt?: string
+/** Fields the API owns or derives. Sending them is rejected as unknown properties. */
+type ProductReadOnlyFields = 'createdAt' | 'updatedAt' | 'priceFrom' | 'sizes' | 'colors' | 'stock'
+
+export type ProductWritePayload = Omit<Product, ProductReadOnlyFields> & {
+  variants: Array<Omit<ProductVariant, 'previousStock'>>
+}
+
+function toWritePayload(body: Product | ProductWritePayload): ProductWritePayload {
+  const {
+    createdAt: _createdAt,
+    updatedAt: _updatedAt,
+    priceFrom: _priceFrom,
+    sizes: _sizes,
+    colors: _colors,
+    stock: _stock,
+    variants,
+    ...rest
+  } = body as Product
+
+  return {
+    ...rest,
+    variants: (variants ?? []).map(({ previousStock: _previousStock, ...variant }) => variant),
+  }
 }
 
 type ProductsListResponse = {
@@ -55,21 +75,21 @@ export async function fetchProductBySlug(
   return unwrapData<Product>(payload)
 }
 
-export async function createProduct(body: ProductWritePayload): Promise<Product> {
+export async function createProduct(body: Product | ProductWritePayload): Promise<Product> {
   const payload = await apiRequest<unknown>('/v1/products', {
     method: 'POST',
-    body,
+    body: toWritePayload(body),
   })
   return unwrapData<Product>(payload)
 }
 
 export async function updateProduct(
   id: string,
-  body: Partial<ProductWritePayload>,
+  body: Product | Partial<ProductWritePayload>,
 ): Promise<Product> {
   const payload = await apiRequest<unknown>(`/v1/products/${encodeURIComponent(id)}`, {
     method: 'PUT',
-    body,
+    body: toWritePayload(body as Product),
   })
   return unwrapData<Product>(payload)
 }

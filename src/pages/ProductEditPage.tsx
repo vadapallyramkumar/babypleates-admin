@@ -128,8 +128,6 @@ function ProductEditor({ mode, initial, categories }: ProductEditorProps) {
       images,
       variants,
       colorGalleries: draft.colorGalleries ?? [],
-      updatedAt: new Date().toISOString(),
-      createdAt: draft.createdAt || new Date().toISOString(),
     }
 
     setSaving(true)

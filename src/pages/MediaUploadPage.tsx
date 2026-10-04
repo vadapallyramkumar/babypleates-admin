@@ -1,8 +1,9 @@
-﻿import { useState } from 'react'
+﻿import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { uploadMediaImage } from '../api/media'
 import { noticeLocationState } from '../components/NoticeBanner'
+import { prepareMediaFile } from '../lib/prepareMediaFile'
 
 const fieldClass =
   'w-full rounded-lg border border-border bg-white px-3 py-2.5 text-[0.9rem] text-admin-ink outline-none transition placeholder:text-muted-light focus:border-burgundy/40 focus:ring-2 focus:ring-burgundy/15'
@@ -13,26 +14,54 @@ export function MediaUploadPage() {
   const navigate = useNavigate()
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [convertedFromHeic, setConvertedFromHeic] = useState(false)
   const [alt, setAlt] = useState('')
   const [error, setError] = useState('')
+  const [preparing, setPreparing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const prepareRequest = useRef(0)
+  const previewRef = useRef('')
 
-  function handleFileChange(next: File | null) {
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
+  function replacePreview(nextUrl: string) {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current)
+    previewRef.current = nextUrl
+    setPreviewUrl(nextUrl)
+  }
+
+  async function handleFileChange(next: File | null) {
+    const requestId = ++prepareRequest.current
+    replacePreview('')
 
     if (!next) {
       setFile(null)
-      setPreviewUrl('')
+      setConvertedFromHeic(false)
+      setPreparing(false)
       return
     }
 
-    setFile(next)
-    setPreviewUrl(URL.createObjectURL(next))
+    setFile(null)
+    setConvertedFromHeic(false)
     setError('')
+    setPreparing(true)
+
+    try {
+      const prepared = await prepareMediaFile(next)
+      if (requestId !== prepareRequest.current) return
+      setFile(prepared.file)
+      setConvertedFromHeic(prepared.converted)
+      replacePreview(URL.createObjectURL(prepared.file))
+    } catch (err) {
+      if (requestId !== prepareRequest.current) return
+      setError(err instanceof Error ? err.message : 'Could not read this file.')
+    } finally {
+      if (requestId === prepareRequest.current) setPreparing(false)
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (preparing) return
 
     if (!file) {
       setError('Choose an image or video to upload.')
@@ -100,13 +129,21 @@ export function MediaUploadPage() {
                 {file?.name || 'Choose an image or video'}
               </span>
               <span className="text-[0.78rem] text-muted">
-                Images (JPG, PNG, WebP, GIF) or video (MP4, WebM)
+                Images (JPG, PNG, WebP, GIF, iPhone HEIC) or video (MP4, WebM)
               </span>
+              {preparing ? (
+                <span className="text-[0.78rem] text-burgundy">Converting iPhone photo to JPG…</span>
+              ) : null}
+              {convertedFromHeic && file ? (
+                <span className="text-[0.78rem] text-muted">
+                  Converted to JPG so it can be used on the store.
+                </span>
+              ) : null}
               <input
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*,video/*,.heic,.heif,image/heic,image/heif"
                 className="sr-only"
-                onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+                onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
               />
             </label>
           </div>
@@ -139,10 +176,10 @@ export function MediaUploadPage() {
           </Link>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || preparing}
             className="rounded-lg bg-burgundy px-4 py-2.5 text-[0.88rem] font-semibold text-white transition hover:bg-burgundy-dark disabled:opacity-60"
           >
-            {submitting ? 'Uploading…' : 'Upload'}
+            {preparing ? 'Converting…' : submitting ? 'Uploading…' : 'Upload'}
           </button>
         </div>
       </form>
