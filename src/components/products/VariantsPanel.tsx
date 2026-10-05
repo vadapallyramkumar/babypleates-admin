@@ -51,15 +51,36 @@ function swatchForColor(color: string): string {
   return SWATCH_FALLBACKS[hash % SWATCH_FALLBACKS.length] ?? '#c97a7a'
 }
 
+const SIZE_OPTIONS = [
+  '0-6M',
+  '6M-1Y',
+  '1Y',
+  '2Y',
+  '3Y',
+  '4Y',
+  '5Y',
+  '6Y',
+  '7Y',
+  '8Y',
+] as const
+
 function nextSizeLabel(existing: string[]): string {
-  const years = existing
-    .map((s) => {
-      const m = /^(\d+)\s*Y$/i.exec(s.trim())
-      return m ? Number(m[1]) : null
-    })
-    .filter((n): n is number => n != null)
-  if (years.length > 0) return `${Math.max(...years) + 1}Y`
-  return existing.length === 0 ? '2Y' : `Size ${existing.length + 1}`
+  const used = new Set(existing.map((size) => size.trim().toUpperCase()))
+  const highest = existing.reduce((max, size) => {
+    const index = SIZE_OPTIONS.findIndex(
+      (option) => option.toUpperCase() === size.trim().toUpperCase(),
+    )
+    return index > max ? index : max
+  }, -1)
+
+  if (highest >= 0) {
+    const following = SIZE_OPTIONS[highest + 1]
+    if (following && !used.has(following.toUpperCase())) return following
+  }
+
+  const unused = SIZE_OPTIONS.find((option) => !used.has(option.toUpperCase()))
+  if (unused) return unused
+  return `Size ${existing.length + 1}`
 }
 
 function makeVariant(
@@ -466,13 +487,22 @@ function ColorCard({
               {variants.map((variant) => (
                 <tr key={variant.id} className="border-t border-border/50">
                   <td className="py-2 pr-2">
-                    <input
-                      className={`${compactFieldClass} w-16`}
+                    <select
+                      className={`${compactFieldClass} w-28`}
                       value={variant.size}
                       onChange={(e) =>
                         onUpdateVariant(variant.id, { size: e.target.value })
                       }
-                    />
+                    >
+                      {(SIZE_OPTIONS as readonly string[]).includes(variant.size) ? null : (
+                        <option value={variant.size}>{variant.size}</option>
+                      )}
+                      {SIZE_OPTIONS.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="py-2 pr-2">
                     <input

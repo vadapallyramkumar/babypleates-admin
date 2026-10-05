@@ -21,38 +21,11 @@ export type MediaUploadResult = {
   bytes: number
 }
 
-const LOCAL_MEDIA_KEY = 'babypleats-media-assets'
-
-function readLocalAssets(): MediaAsset[] {
-  try {
-    const raw = localStorage.getItem(LOCAL_MEDIA_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-
-    return parsed
-      .map((item) => normalizeStoredAsset(item))
-      .filter((asset): asset is MediaAsset => asset !== null)
-  } catch {
-    return []
-  }
-}
-
-function writeLocalAssets(assets: MediaAsset[]) {
-  localStorage.setItem(LOCAL_MEDIA_KEY, JSON.stringify(assets))
-}
-
-/** Support older localStorage entries that used `id` instead of `publicId`. */
-function normalizeStoredAsset(item: unknown): MediaAsset | null {
+function normalizeAsset(item: unknown): MediaAsset | null {
   if (!item || typeof item !== 'object') return null
 
   const record = item as Record<string, unknown>
-  const publicId =
-    typeof record.publicId === 'string'
-      ? record.publicId
-      : typeof record.id === 'string'
-        ? record.id
-        : ''
+  const publicId = typeof record.publicId === 'string' ? record.publicId : ''
   const url = typeof record.url === 'string' ? record.url : ''
 
   if (!publicId || !url) return null
@@ -68,11 +41,7 @@ function normalizeStoredAsset(item: unknown): MediaAsset | null {
   }
 }
 
-function toMediaAsset(
-  upload: MediaUploadResult,
-  file: File,
-  alt: string,
-): MediaAsset {
+function toMediaAsset(upload: MediaUploadResult, file: File, alt: string): MediaAsset {
   const format = upload.format || 'jpeg'
   return {
     publicId: upload.publicId,
@@ -85,35 +54,34 @@ function toMediaAsset(
   }
 }
 
-/**
- * Media library is stored locally — the API has upload/delete only (no list endpoint).
- */
+/** Shared library from GET /v1/media — the same list on every device. */
 export async function fetchMediaAssets(): Promise<MediaAsset[]> {
-  return readLocalAssets()
+  const payload = await apiRequest<unknown>('/v1/media')
+  const data = unwrapData<unknown>(payload)
+  if (!Array.isArray(data)) return []
+
+  return data
+    .map((item) => normalizeAsset(item))
+    .filter((asset): asset is MediaAsset => asset !== null)
 }
 
-/** Upload image via POST /v1/media/upload and save to the local library. */
+/** Upload via POST /v1/media/upload. The API stores the asset in the shared library. */
 export async function uploadMediaImage(file: File, alt = ''): Promise<MediaAsset> {
   const prepared = await prepareMediaFile(file)
   const formData = new FormData()
   formData.append('file', prepared.file)
+  formData.append('alt', alt.trim())
 
   const payload = await apiUpload<unknown>('/v1/media/upload', formData)
   const upload = unwrapData<MediaUploadResult>(payload)
-
-  const asset = toMediaAsset(upload, prepared.file, alt)
-  const next = [asset, ...readLocalAssets().filter((a) => a.publicId !== asset.publicId)]
-  writeLocalAssets(next)
-  return asset
+  return toMediaAsset(upload, prepared.file, alt)
 }
 
-/** Delete image via DELETE /v1/media and remove from the local library. */
+/** Delete via DELETE /v1/media. The API removes it from Cloudinary and the shared library. */
 export async function deleteMediaImage(publicId: string): Promise<void> {
   const payload = await apiRequest<unknown>('/v1/media', {
     method: 'DELETE',
     body: { publicId },
   })
   unwrapData(payload)
-
-  writeLocalAssets(readLocalAssets().filter((a) => a.publicId !== publicId))
 }
