@@ -34,7 +34,8 @@ async function convertHeicToJpeg(file: File): Promise<File> {
     const blob = await heicTo({
       blob: file,
       type: 'image/jpeg',
-      quality: 0.9,
+      // 0.95 stays near the decoded iPhone photo and usually under the 10MB API limit.
+      quality: 0.95,
     })
     return new File([blob], jpegFileName(file.name), {
       type: 'image/jpeg',
