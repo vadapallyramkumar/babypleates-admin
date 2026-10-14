@@ -162,7 +162,7 @@ export function MediaPage() {
 
     setDeletingId(asset.publicId)
     try {
-      await deleteMediaImage(asset.publicId)
+      await deleteMediaImage(asset.publicId, asset.resourceType)
       showSuccess(`“${label}” deleted.`)
       await load({ silent: true })
     } catch (err) {

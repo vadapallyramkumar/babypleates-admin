@@ -1,12 +1,15 @@
 import { apiRequest, apiUpload, unwrapData } from '../lib/api'
 import { prepareMediaFile } from '../lib/prepareMediaFile'
 
+export type MediaResourceType = 'image' | 'video'
+
 export type MediaAsset = {
   publicId: string
   url: string
   filename: string
   alt: string
   mimeType: string
+  resourceType: MediaResourceType
   sizeBytes: number | null
   uploadedAt: string | null
 }
@@ -22,6 +25,18 @@ export type MediaUploadResult = {
   bytes: number
 }
 
+function resourceTypeFromMime(mimeType: string): MediaResourceType {
+  return mimeType.startsWith('video/') ? 'video' : 'image'
+}
+
+function normalizeResourceType(
+  value: unknown,
+  mimeType: string,
+): MediaResourceType {
+  if (value === 'image' || value === 'video') return value
+  return resourceTypeFromMime(mimeType)
+}
+
 function normalizeAsset(item: unknown): MediaAsset | null {
   if (!item || typeof item !== 'object') return null
 
@@ -31,12 +46,16 @@ function normalizeAsset(item: unknown): MediaAsset | null {
 
   if (!publicId || !url) return null
 
+  const mimeType =
+    typeof record.mimeType === 'string' ? record.mimeType : 'image/jpeg'
+
   return {
     publicId,
     url,
     filename: typeof record.filename === 'string' ? record.filename : publicId,
     alt: typeof record.alt === 'string' ? record.alt : '',
-    mimeType: typeof record.mimeType === 'string' ? record.mimeType : 'image/jpeg',
+    mimeType,
+    resourceType: normalizeResourceType(record.resourceType, mimeType),
     sizeBytes: typeof record.sizeBytes === 'number' ? record.sizeBytes : null,
     uploadedAt: typeof record.uploadedAt === 'string' ? record.uploadedAt : null,
   }
@@ -62,12 +81,14 @@ function toMediaAsset(upload: MediaUploadResult, alt: string, file?: File): Medi
     upload.filename ||
     file?.name ||
     `${upload.publicId.split('/').pop()}.${format}`
+  const mimeType = mimeFromUpload(upload, file)
   return {
     publicId: upload.publicId,
     url: upload.url,
     filename,
     alt: alt.trim() || filename.replace(/\.[^.]+$/, ''),
-    mimeType: mimeFromUpload(upload, file),
+    mimeType,
+    resourceType: normalizeResourceType(upload.resourceType, mimeType),
     sizeBytes: upload.bytes ?? null,
     uploadedAt: new Date().toISOString(),
   }
@@ -168,10 +189,13 @@ export async function uploadMediaBatch(files: File[], alt = ''): Promise<MediaBa
 }
 
 /** Delete via DELETE /v1/media. The API removes it from Cloudinary and the shared library. */
-export async function deleteMediaImage(publicId: string): Promise<void> {
+export async function deleteMediaImage(
+  publicId: string,
+  resourceType: MediaResourceType,
+): Promise<void> {
   const payload = await apiRequest<unknown>('/v1/media', {
     method: 'DELETE',
-    body: { publicId },
+    body: { publicId, resourceType },
   })
   unwrapData(payload)
 }
