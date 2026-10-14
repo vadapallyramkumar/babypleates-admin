@@ -16,6 +16,7 @@ export type MediaUploadResult = {
   publicId: string
   resourceType: string
   format: string
+  filename?: string
   width: number
   height: number
   bytes: number
@@ -41,14 +42,32 @@ function normalizeAsset(item: unknown): MediaAsset | null {
   }
 }
 
-function toMediaAsset(upload: MediaUploadResult, file: File, alt: string): MediaAsset {
+function mimeFromUpload(upload: MediaUploadResult, file?: File): string {
+  if (file?.type) return file.type
+  const format = (upload.format || '').toLowerCase()
+  if (upload.resourceType === 'video') {
+    if (format === 'webm') return 'video/webm'
+    if (format === 'mov') return 'video/quicktime'
+    return 'video/mp4'
+  }
+  if (format === 'png') return 'image/png'
+  if (format === 'webp') return 'image/webp'
+  if (format === 'gif') return 'image/gif'
+  return 'image/jpeg'
+}
+
+function toMediaAsset(upload: MediaUploadResult, alt: string, file?: File): MediaAsset {
   const format = upload.format || 'jpeg'
+  const filename =
+    upload.filename ||
+    file?.name ||
+    `${upload.publicId.split('/').pop()}.${format}`
   return {
     publicId: upload.publicId,
     url: upload.url,
-    filename: file.name || `${upload.publicId.split('/').pop()}.${format}`,
-    alt: alt.trim() || file.name.replace(/\.[^.]+$/, ''),
-    mimeType: file.type || `image/${format}`,
+    filename,
+    alt: alt.trim() || filename.replace(/\.[^.]+$/, ''),
+    mimeType: mimeFromUpload(upload, file),
     sizeBytes: upload.bytes ?? null,
     uploadedAt: new Date().toISOString(),
   }
@@ -65,6 +84,28 @@ export async function fetchMediaAssets(): Promise<MediaAsset[]> {
     .filter((asset): asset is MediaAsset => asset !== null)
 }
 
+export type MediaBatchFailure = {
+  filename: string
+  message: string
+}
+
+export type MediaBatchResult = {
+  uploaded: MediaAsset[]
+  failed: MediaBatchFailure[]
+}
+
+function normalizeBatchFailure(item: unknown): MediaBatchFailure | null {
+  if (!item || typeof item !== 'object') return null
+  const record = item as Record<string, unknown>
+  const filename = typeof record.filename === 'string' ? record.filename : ''
+  const message = typeof record.message === 'string' ? record.message : ''
+  if (!filename && !message) return null
+  return {
+    filename: filename || 'file',
+    message: message || 'Upload failed.',
+  }
+}
+
 /** Upload via POST /v1/media/upload. The API stores the asset in the shared library. */
 export async function uploadMediaImage(file: File, alt = ''): Promise<MediaAsset> {
   const prepared = await prepareMediaFile(file)
@@ -74,7 +115,56 @@ export async function uploadMediaImage(file: File, alt = ''): Promise<MediaAsset
 
   const payload = await apiUpload<unknown>('/v1/media/upload', formData)
   const upload = unwrapData<MediaUploadResult>(payload)
-  return toMediaAsset(upload, prepared.file, alt)
+  return toMediaAsset(upload, alt, prepared.file)
+}
+
+/**
+ * Upload many files via POST /v1/media/upload-batch.
+ * Returns successful assets plus any per-file failures from the API.
+ */
+export async function uploadMediaBatch(files: File[], alt = ''): Promise<MediaBatchResult> {
+  if (files.length === 0) {
+    throw new Error('Choose at least one image or video to upload.')
+  }
+
+  const preparedFiles: File[] = []
+  for (const file of files) {
+    const prepared = await prepareMediaFile(file)
+    preparedFiles.push(prepared.file)
+  }
+
+  const formData = new FormData()
+  for (const file of preparedFiles) {
+    formData.append('files', file)
+  }
+  formData.append('alt', alt.trim())
+
+  const payload = await apiUpload<unknown>('/v1/media/upload-batch', formData)
+  const data = unwrapData<unknown>(payload)
+
+  if (!data || typeof data !== 'object') {
+    throw new Error('Unexpected upload response.')
+  }
+
+  const record = data as Record<string, unknown>
+  const uploadedRaw = Array.isArray(record.uploaded) ? record.uploaded : []
+  const failedRaw = Array.isArray(record.failed) ? record.failed : []
+
+  const uploaded = uploadedRaw
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const upload = item as MediaUploadResult
+      if (!upload.publicId || !upload.url) return null
+      const source = preparedFiles.find((file) => file.name === upload.filename)
+      return toMediaAsset(upload, alt, source)
+    })
+    .filter((asset): asset is MediaAsset => asset !== null)
+
+  const failed = failedRaw
+    .map((item) => normalizeBatchFailure(item))
+    .filter((item): item is MediaBatchFailure => item !== null)
+
+  return { uploaded, failed }
 }
 
 /** Delete via DELETE /v1/media. The API removes it from Cloudinary and the shared library. */
