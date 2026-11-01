@@ -9,6 +9,7 @@ import { HeroImageEditPage } from './pages/HeroImageEditPage'
 import { CouponCreatePage } from './pages/CouponCreatePage'
 import { CouponEditPage } from './pages/CouponEditPage'
 import { CouponsPage } from './pages/CouponsPage'
+import { DeliveryPage } from './pages/DeliveryPage'
 import { HomePage } from './pages/HomePage'
 import { InventoryPage } from './pages/InventoryPage'
 import { LoginPage } from './pages/LoginPage'
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="coupons" element={<CouponsPage />} />
             <Route path="coupons/new" element={<CouponCreatePage />} />
             <Route path="coupons/:id/edit" element={<CouponEditPage />} />
+            <Route path="delivery" element={<DeliveryPage />} />
             <Route path="home" element={<HomePage />} />
             <Route path="home/hero-images/new" element={<HeroImageCreatePage />} />
             <Route path="home/hero-images/:id/edit" element={<HeroImageEditPage />} />

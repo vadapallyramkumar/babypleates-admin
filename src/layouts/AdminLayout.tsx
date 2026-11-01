@@ -8,6 +8,7 @@ const navItems = [
   { to: '/', label: 'Overview', end: true },
   { to: '/orders', label: 'Orders' },
   { to: '/coupons', label: 'Coupons' },
+  { to: '/delivery', label: 'Delivery Management' },
   { to: '/home', label: 'Home' },
   { to: '/products', label: 'Products' },
   { to: '/categories', label: 'Categories' },

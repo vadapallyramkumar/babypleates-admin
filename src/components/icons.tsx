@@ -450,3 +450,18 @@ export function IconTrash({ className = '' }: { className?: string }) {
     </svg>
   )
 }
+
+export function IconTruck({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M3 7h11v10H3V7zM14 10h4l3 3v4h-7v-7z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <circle cx="7" cy="17.5" r="1.75" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="17" cy="17.5" r="1.75" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
