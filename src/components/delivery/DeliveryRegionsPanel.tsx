@@ -388,6 +388,7 @@ export function DeliveryRegionsPanel({ onSuccess, onError }: DeliveryRegionsPane
               <input
                 className={`${homeFieldClass} mt-1.5`}
                 inputMode="numeric"
+                type="number"
                 value={form.minTransitDays}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, minTransitDays: e.target.value }))
@@ -399,6 +400,7 @@ export function DeliveryRegionsPanel({ onSuccess, onError }: DeliveryRegionsPane
               <input
                 className={`${homeFieldClass} mt-1.5`}
                 inputMode="numeric"
+                type="number"
                 value={form.maxTransitDays}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, maxTransitDays: e.target.value }))

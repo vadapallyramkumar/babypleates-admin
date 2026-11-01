@@ -1,0 +1,19 @@
+# Baby Pleats Admin - Render Static Site
+# Blueprint: https://render.com/docs/blueprint-spec
+#
+# VITE_* variables are baked in at build time. Set VITE_API_BASE_URL in the
+# Render dashboard (or below) so production builds point at the live API.
+
+services:
+  - type: web
+    name: babypleates-admin
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://babypleats-api.onrender.com

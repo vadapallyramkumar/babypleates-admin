@@ -1,32 +1,56 @@
-# React + TypeScript + Vite
+# Baby Pleats Admin
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Admin dashboard for Baby Pleats (React + TypeScript + Vite).
 
-Currently, two official plugins are available:
+## Local development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Copy `.env.example` to `.env` and set `VITE_API_BASE_URL` if you need a non-default API host.
+
+```bash
+npm run build   # production build → dist/
+npm run lint
+npm run preview # serve dist locally
+```
+
+## Environment
+
+| Variable | Purpose |
+| --- | --- |
+| `VITE_API_BASE_URL` | Baby Pleats API origin (no trailing slash). Build-time only. |
+
+Production value: `https://babypleats-api.onrender.com`
+
+Do not put API secrets, Cloudinary API secrets, or other private credentials in frontend env vars — they are embedded in the client bundle.
+
+## Deploy on Render (Static Site)
+
+1. Create a **Static Site** from this repository (or use the Blueprint in `render.yaml`).
+2. **Build command:** `npm install && npm run build`
+3. **Publish directory:** `dist`
+4. **Environment** (build-time):
+
+   - `VITE_API_BASE_URL` = `https://babypleats-api.onrender.com`
+
+5. **SPA rewrite** (Redirects/Rewrites):
+
+   | Source | Destination | Action |
+   | --- | --- | --- |
+   | `/*` | `/index.html` | Rewrite |
+
+6. Ensure the API (`babypleats-api`) allows CORS from the admin Static Site origin.
+
+After deploy, open the Render URL and confirm login, nested routes, and hard refresh on deep links (e.g. `/orders`, `/products/:id`).
+
+## Scripts
+
+| Script | Description |
+| --- | --- |
+| `npm run dev` | Vite dev server |
+| `npm run build` | Typecheck + production build |
+| `npm run lint` | Oxlint |
+| `npm run preview` | Preview production build |

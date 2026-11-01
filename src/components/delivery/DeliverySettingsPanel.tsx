@@ -229,6 +229,7 @@ export function DeliverySettingsPanel({ onSuccess, onError }: DeliverySettingsPa
             <input
               className={`${homeFieldClass} mt-1.5`}
               inputMode="numeric"
+              type="number"
               value={minPreparationDays}
               onChange={(e) => setMinPreparationDays(e.target.value)}
             />
@@ -238,6 +239,7 @@ export function DeliverySettingsPanel({ onSuccess, onError }: DeliverySettingsPa
             <input
               className={`${homeFieldClass} mt-1.5`}
               inputMode="numeric"
+              type="number"
               value={maxPreparationDays}
               onChange={(e) => setMaxPreparationDays(e.target.value)}
             />
@@ -256,6 +258,7 @@ export function DeliverySettingsPanel({ onSuccess, onError }: DeliverySettingsPa
             <input
               className={`${homeFieldClass} mt-1.5`}
               inputMode="numeric"
+              type="number"
               value={minCourierTransitDays}
               onChange={(e) => setMinCourierTransitDays(e.target.value)}
             />
@@ -265,6 +268,7 @@ export function DeliverySettingsPanel({ onSuccess, onError }: DeliverySettingsPa
             <input
               className={`${homeFieldClass} mt-1.5`}
               inputMode="numeric"
+              type="number"
               value={maxCourierTransitDays}
               onChange={(e) => setMaxCourierTransitDays(e.target.value)}
             />
@@ -291,6 +295,7 @@ export function DeliverySettingsPanel({ onSuccess, onError }: DeliverySettingsPa
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
               placeholder="Asia/Kolkata"
+              disabled={true}
             />
           </label>
         </div>
